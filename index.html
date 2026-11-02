@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<!-- 模型部排班表 v20261102（原理同印切班表：固定班表 template＋臨時調整 overrides＋待審核 pending＋修改記錄 changelog） -->
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="format-detection" content="telephone=no">
+<meta name="format-detection" content="date=no">
+<title>模型部排班表</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #e3e7e4; --surface: #f1f3f1; --surface-2: #e7ebe8; --surface-3: #d8ddd9;
+    --border: #c6cdc8; --border-light: #b5beb8;
+    --text: #3f4844; --text-secondary: #5e6863; --text-muted: #87918c; --text-dim: #aeb7b2;
+    --primary: #5f8a7e; --primary-dark: #4f786c; --primary-soft: #d5e5df; --primary-text: #3d6458;
+    --cell-bg: #e6efeb;
+    --accent: #8a86b8; --success: #7fae8e; --danger: #c08078; --warn: #e0a43a;
+    --header-bg: linear-gradient(135deg, #5f8a7e 0%, #7d86ad 100%);
+    --shadow-xs: 0 1px 2px rgba(60,75,70,.06); --shadow-sm: 0 1px 4px rgba(60,75,70,.08);
+    --shadow-md: 0 4px 12px rgba(60,75,70,.10); --shadow-lg: 0 8px 28px rgba(60,75,70,.12);
+    --radius: 12px; --radius-sm: 8px; --radius-xs: 5px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: auto; }
+
+  .app-header { background: var(--header-bg); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 4px 20px rgba(60,80,75,.18); position: sticky; top: 0; z-index: 100; flex-wrap: wrap; }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo-icon { width: 42px; height: 42px; background: rgba(255,255,255,.2); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 22px; border: 1px solid rgba(255,255,255,.25); }
+  .header-title { font-size: 21px; font-weight: 700; color: #fff; letter-spacing: -.3px; }
+  .header-subtitle { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 1px; }
+  .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .week-nav { display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.2); border-radius: var(--radius-sm); padding: 4px 6px; }
+  .week-nav button { background: none; border: none; color: rgba(255,255,255,.85); cursor: pointer; width: 30px; height: 30px; border-radius: var(--radius-xs); display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .week-nav button:hover { background: rgba(255,255,255,.15); color: #fff; }
+  .week-label { font-size: 13px; font-weight: 600; color: #fff; min-width: 170px; text-align: center; font-family: 'JetBrains Mono', monospace; }
+  .week-today-row { display: flex; align-items: center; gap: 10px; }
+  .btn-today { background: rgba(255,255,255,.22); border: 1px solid rgba(255,255,255,.35); color: #fff; cursor: pointer; padding: 5px 14px; border-radius: 20px; font-family: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .btn-today:hover { background: rgba(255,255,255,.38); }
+  .btn-today.is-current-week { opacity: .35; cursor: default; pointer-events: none; }
+
+  .btn-header { padding: 7px 12px; border-radius: var(--radius-xs); border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.12); color: #fff; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .btn-header:hover { background: rgba(255,255,255,.22); }
+  .btn { padding: 7px 14px; border-radius: var(--radius-xs); border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .btn:hover { background: var(--surface-3); }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-dark); }
+
+  .setup-banner { display: none; background: #fbefc9; border-bottom: 1px solid #e6d28f; color: #6e5a1e; padding: 10px 32px; font-size: 13px; }
+  .setup-banner.show { display: block; }
+
+  .legend-bar { display: flex; align-items: center; gap: 16px; padding: 10px 32px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; box-shadow: var(--shadow-xs); flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-weight: 500; color: var(--text-secondary); font-size: 12px; }
+  .legend-people { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; align-items: center; }
+  .legend-people .hint { font-size: 11px; color: var(--text-dim); }
+  .person-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; user-select: none; }
+  .person-chip:hover { background: var(--surface-3); }
+  .person-chip.active { border-color: var(--text-secondary); background: var(--text); color: #fff; box-shadow: var(--shadow-sm); }
+  .person-chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .person-chip.active .dot { border: 1.5px solid #fff; }
+
+  .schedule-wrapper { padding: 20px 32px 40px; }
+  .today-badge { display: inline-block; background: var(--primary); color: #fff; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 10px; margin-left: 5px; vertical-align: middle; }
+  .view-toggle { display: inline-flex; gap: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px; padding: 3px; }
+  .view-btn { border: none; background: transparent; font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text-muted); padding: 4px 12px; border-radius: 16px; cursor: pointer; white-space: nowrap; }
+  .view-btn.active { background: var(--text); color: #fff; }
+  .mk { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+  .mk.ovr { background: var(--accent); } .mk.pend { background: var(--warn); }
+
+  /* ─── A 時間軸：每天一欄，同一人連續的小時合併成一條色塊 ─── */
+  .tl { display: grid; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; }
+  .tl.week { min-width: 940px; }
+  .tl-dh { text-align: center; padding: 10px 4px; font-weight: 700; font-size: 14px; background: var(--surface-2); border-bottom: 2px solid var(--border-light); border-right: 1px solid var(--border); }
+  .tl-dh small { display: block; font-weight: 500; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .tl-dh.today { background: var(--primary-soft); }
+  .tl-axis { position: relative; background: var(--surface-2); border-right: 2px solid var(--border); }
+  .tl-axis span { position: absolute; left: 0; right: 4px; text-align: right; font-size: 10px; font-weight: 600; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; padding-top: 2px; }
+  .tl-col { position: relative; border-right: 1px solid var(--border); }
+  .tl-col.today { background: #f6faf8; }
+  .tl-hr { position: absolute; left: 0; right: 0; border-bottom: 1px solid var(--surface-3); cursor: pointer; }
+  .tl-hr:hover { background: rgba(95,138,126,.08); }
+  .tl-hr .mk { position: absolute; right: 2px; top: 3px; width: 7px; height: 7px; }
+  .tl-bar { position: absolute; border-radius: 7px; border-left: 4px solid; padding: 3px 6px; font-size: 12px; line-height: 1.3; overflow: hidden; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.07); z-index: 1; }
+  .tl-bar:hover { filter: brightness(.96); }
+  .tl-bar b { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tl-bar small { display: block; font-size: 10px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tl-bar small.t { font-family: 'JetBrains Mono', monospace; }
+  .tl-bar.compact { padding: 3px 1px; border-left-width: 3px; text-align: center; }
+  .tl-bar.compact b { font-size: 11px; text-overflow: clip; }
+  .tl-bar.dimmed { opacity: .12; pointer-events: none; }
+  .tl-now { position: absolute; left: 0; right: 0; height: 2px; background: #d9534f; z-index: 2; pointer-events: none; }
+  .tl-now::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #d9534f; }
+
+  /* ─── E 卡片：一天一張 ─── */
+  /* 電腦：一行七天（太窄就左右捲動）；手機：一天一張往下排（見 @media） */
+  .cards { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; min-width: 1000px; align-items: start; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 10px; box-shadow: var(--shadow-sm); }
+  .card.today { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary), var(--shadow-md); }
+  .card-hd { display: flex; align-items: center; gap: 5px; margin-bottom: 8px; flex-wrap: wrap; }
+  .card-hd b { font-size: 16px; font-weight: 700; }
+  .card-hd small { font-size: 12px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .card-hd em { font-style: normal; font-size: 10px; font-weight: 700; background: var(--primary); color: #fff; padding: 1px 7px; border-radius: 10px; }
+  .card-hd .badge { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--warn); color: #fff; }
+  .card-edit { margin-left: auto; font-family: inherit; font-size: 11px; padding: 3px 9px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+  .card-edit:hover { background: var(--surface-3); }
+  .card-edit .lbl { display: none; }
+  .card-lanes { position: relative; padding: 2px 0 14px; margin-bottom: 4px; border-bottom: 1px dashed var(--surface-3); }
+  .card-lanes i { display: block; height: 4px; border-radius: 2px; margin: 2px 0; }
+  .card-lanes i.dimmed { opacity: .15; }
+  .card-lanes .tick { position: absolute; bottom: 0; font-size: 9px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; transform: translateX(-50%); }
+  /* 窄卡片：頭像在左，名字在上、時間在下 */
+  .card-row { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 8px; align-items: center; padding: 6px 2px; border-radius: 8px; cursor: pointer; }
+  .card-row .av { grid-row: span 2; }
+  .card-row:hover { background: var(--surface-2); }
+  .card-row.dimmed { opacity: .15; pointer-events: none; }
+  .card-row .av { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; border: 1px solid; }
+  .card-row .nm { font-weight: 600; font-size: 14px; min-width: 0; }
+  .card-row .nm small { display: block; font-size: 11px; font-weight: 400; color: var(--text-muted); }
+  .card-row .tm { font-size: 11.5px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+  .card-row .mk { margin-left: 4px; }
+  .card-none { color: var(--text-dim); font-size: 13px; text-align: center; padding: 18px 0; cursor: pointer; }
+
+  /* 小時清單（卡片「✎ 編輯」） */
+  .hp-row { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-bottom: 1px solid var(--surface-3); cursor: pointer; border-radius: 6px; }
+  .hp-row:hover { background: var(--surface-2); }
+  .hp-row .t { width: 92px; flex-shrink: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; }
+  .hp-row .ppl { flex: 1; display: flex; flex-wrap: wrap; gap: 4px; }
+  .hp-row .tag { font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 5px; border: 1px solid; }
+  .hp-row .none { color: var(--text-dim); font-size: 12px; }
+
+  .notes-section { margin-top: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 22px; box-shadow: var(--shadow-sm); }
+  .notes-title { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; }
+  .notes-content { font-size: 13px; line-height: 1.8; color: var(--text-muted); }
+
+  /* ─── 視窗 ─── */
+  .modal-overlay, .scope-overlay { display: none; position: fixed; inset: 0; background: rgba(60,72,68,.3); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+  .modal-overlay { z-index: 1000; } .scope-overlay { z-index: 1100; }
+  .modal-overlay.active, .scope-overlay.active { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 460px; max-width: 95vw; box-shadow: var(--shadow-lg); animation: modalIn .2s ease; }
+  @keyframes modalIn { from { transform: scale(.96) translateY(8px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+  .modal-header { padding: 16px 22px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-header h3 { font-size: 16px; font-weight: 700; }
+  .modal-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; width: 30px; height: 30px; border-radius: var(--radius-xs); }
+  .modal-close:hover { background: var(--surface-3); color: var(--text); }
+  .modal-body { padding: 16px 22px; max-height: 65vh; overflow-y: auto; }
+  .modal-footer { padding: 12px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+  .modal-footer.split { justify-content: space-between; }
+  .form-section-title { font-size: 12px; font-weight: 700; letter-spacing: 1px; margin-bottom: 10px; color: var(--primary-text); }
+  .form-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .form-input { flex: 1; padding: 8px 12px; border-radius: var(--radius-xs); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: inherit; font-size: 14px; min-width: 0; }
+  .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(95,138,126,.15); }
+  .form-input::placeholder { color: var(--text-dim); }
+  .form-input.note-input { flex: .8; font-size: 12px; }
+  .btn-add-person { background: none; border: 1px dashed var(--border-light); color: var(--text-muted); padding: 6px 12px; border-radius: var(--radius-xs); cursor: pointer; font-size: 12px; font-family: inherit; }
+  .btn-add-person:hover { border-color: var(--primary); color: var(--primary); background: var(--cell-bg); }
+  .btn-remove { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 15px; width: 28px; height: 28px; border-radius: var(--radius-xs); opacity: .5; flex-shrink: 0; }
+  .btn-remove:hover { opacity: 1; background: #f5e0dc; }
+  .bchips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .bchips-label { font-size: 11px; color: var(--text-muted); width: 100%; }
+  .bchip { font-family: inherit; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 14px; border: 1px solid; cursor: pointer; }
+  .bchip.active { box-shadow: 0 0 0 2px var(--text); }
+
+  .scope-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 360px; max-width: 92vw; box-shadow: var(--shadow-lg); animation: modalIn .2s ease; text-align: center; padding: 22px 20px 16px; }
+  .scope-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .scope-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5; }
+  .scope-btns { display: flex; flex-direction: column; gap: 8px; }
+  .scope-btn { padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .scope-btn:hover { background: var(--surface-3); }
+  .scope-btn.scope-all { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .scope-btn.scope-all:hover { background: var(--primary-dark); }
+  .scope-pw-row { display: flex; gap: 6px; }
+  .scope-pw-input { flex: 1; padding: 8px 12px; border-radius: var(--radius-xs); border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-family: inherit; font-size: 13px; min-width: 0; }
+  .scope-pw-input:focus { outline: none; border-color: var(--primary); }
+  .scope-pw-confirm { padding: 8px 16px; border-radius: var(--radius-xs); border: none; background: var(--primary); color: #fff; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .scope-pw-confirm:hover { background: var(--primary-dark); }
+  .scope-pw-error { font-size: 12px; color: var(--danger); margin-top: 6px; }
+  .scope-btn-back { background: none; border: none; color: var(--text-muted); font-family: inherit; font-size: 12px; cursor: pointer; margin-top: 10px; padding: 4px 0; }
+  .scope-btn-back:hover { color: var(--text); }
+  .scope-divider { margin: 12px 0 8px; position: relative; font-size: 11px; color: var(--text-dim); }
+  .scope-divider::before { content: ''; position: absolute; left: 0; top: 50%; width: 100%; height: 1px; background: var(--border); }
+  .scope-divider span { background: var(--surface); padding: 0 10px; position: relative; }
+  .scope-name-btns { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .scope-name-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .scope-name-btn:hover { background: var(--surface-3); }
+  .field-label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; text-align: left; }
+
+  /* ─── 管理面板（待審核／記錄） ─── */
+  .history-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .history-tab { flex: 1; padding: 10px; border: none; background: none; font-family: inherit; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  .history-tab.active { color: var(--text); border-bottom-color: var(--primary); }
+  .pending-count { background: var(--danger); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 700; margin-left: 4px; }
+  .pending-count:empty { display: none; }
+  .pending-card, .log-item { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; background: var(--surface-2); font-size: 13px; }
+  .log-item { background: var(--surface); }
+  .log-meta { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  .log-user { background: var(--accent); color: #fff; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+  .log-time { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-left: auto; }
+  .log-scope { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 3px; color: var(--primary-text); background: var(--cell-bg); border: 1px solid var(--primary-soft); }
+  .log-scope.this { color: #6a5a8a; background: #efeaf5; border-color: #d6cce6; }
+  .log-key { font-size: 12px; font-weight: 600; background: var(--surface-2); padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border); }
+  .log-compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
+  .log-box { padding: 8px 10px; border-radius: var(--radius-xs); border: 1px solid var(--border); font-size: 12px; line-height: 1.6; background: var(--surface); }
+  .log-box.new { background: #fef9ee; border-color: #e8d5a8; }
+  .log-box-title { font-size: 10px; font-weight: 700; color: var(--text-dim); margin-bottom: 2px; }
+  .log-arrow { color: var(--text-dim); font-size: 16px; text-align: center; }
+  .log-empty { text-align: center; color: var(--text-muted); padding: 30px; }
+  .review-pw-row { display: flex; gap: 8px; margin-top: 10px; }
+  .review-actions { display: flex; gap: 6px; margin-top: 6px; }
+  .btn-approve { padding: 5px 14px; border-radius: var(--radius-xs); border: none; background: var(--success); color: #fff; font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .btn-reject { padding: 5px 14px; border-radius: var(--radius-xs); border: 1px solid var(--danger); background: none; color: var(--danger); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .btn-approve:hover { opacity: .85; } .btn-reject:hover { background: #fef2f2; }
+  .review-pw-error { font-size: 12px; color: var(--danger); margin-top: 4px; display: none; }
+  .review-edit-link { display: block; margin: 12px auto 0; font-size: 12px; color: var(--text-muted); cursor: pointer; border: none; background: none; font-family: inherit; text-decoration: underline; }
+
+  /* ─── 手機：時間軸改成一次看一天 ─── */
+  .mobile-day-tabs { display: flex; gap: 4px; overflow-x: auto; margin-bottom: 12px; scrollbar-width: none; }
+  .mobile-day-tabs::-webkit-scrollbar { display: none; }
+  .mobile-day-tab { padding: 5px 10px; border-radius: 20px; font-size: 13px; background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; text-align: center; min-width: 46px; flex-shrink: 0; }
+  .mobile-day-tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+  .mobile-day-tab.is-today { border-color: var(--primary); }
+  .mobile-day-tab .tab-day { font-weight: 600; } .mobile-day-tab .tab-date { font-size: 10px; opacity: .7; }
+
+  /* ─── 批量排班（整月月曆） ─── */
+  .batch-overlay { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 900; flex-direction: column; }
+  .batch-overlay.active { display: flex; }
+  .batch-header { background: var(--header-bg); color: #fff; padding: 12px 24px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .batch-title { font-size: 17px; font-weight: 700; }
+  .batch-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .batch-count { font-size: 12px; background: rgba(255,255,255,.2); padding: 4px 10px; border-radius: 20px; }
+  .batch-tools { padding: 10px 24px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 12px; }
+  .bt-modes { display: flex; gap: 6px; margin-bottom: 8px; }
+  .bt-mode, .bt-opt { font-family: inherit; font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; }
+  .bt-mode.active { background: var(--text); border-color: var(--text); color: #fff; }
+  .bt-opt.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .bt-opt.mini { font-weight: 500; border-style: dashed; }
+  .bt-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+  .bt-label { font-weight: 700; color: var(--text-secondary); min-width: 44px; }
+  .bt-name { flex: 0 0 120px; padding: 5px 10px; font-size: 13px; }
+  .bt-note { flex: 0 0 150px; padding: 5px 10px; font-size: 12px; }
+  .bt-date { flex: 0 0 140px; padding: 4px 8px; font-size: 12px; }
+  .bt-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .bt-tip { color: var(--accent); font-weight: 600; margin-bottom: 0; }
+  .bt-tip.warn { color: var(--text-muted); font-weight: 400; }
+  .bt-legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; color: var(--text-muted); margin-top: 6px; }
+  .bt-legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+  .batch-scroll { flex: 1; overflow: auto; padding: 14px 24px 40px; }
+  .batch-cal { display: grid; grid-template-columns: repeat(7, minmax(140px, 1fr)); gap: 8px; min-width: 1020px; }
+  .batch-cal.add-mode .bday:not(.blank) { cursor: copy; }
+  .batch-cal.add-mode .bday:not(.blank):hover { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(138,134,184,.35); }
+  .bcal-wd { text-align: center; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  .bday { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; display: flex; flex-direction: column; }
+  .bday.blank { background: transparent; border: none; }
+  .bday.is-today { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(138,134,184,.35); }
+  .bday.has-pick .bday-head { background: #e9e2f3; }
+  .bday-head { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  .bday-date { font-weight: 700; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
+  .bday-wd { font-size: 11px; color: var(--text-muted); }
+  .bday-tools { margin-left: auto; display: flex; gap: 4px; }
+  .bday-tools button { font-family: inherit; font-size: 10px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; }
+  .bday-tools button.paste { border-color: var(--accent); color: var(--accent); }
+  .bslot { display: flex; gap: 6px; padding: 1px 8px; font-size: 11px; line-height: 1.55; cursor: pointer; border-top: 1px dashed var(--surface-3); align-items: baseline; }
+  .bslot:first-of-type { border-top: none; }
+  .bslot:hover { background: var(--surface-3); }
+  .bslot.override { background: #efeaf5; }
+  .bslot.changed { background: #fbefc9; }
+  .bslot-time { width: 20px; flex-shrink: 0; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+  .bslot-ppl { flex: 1; min-width: 0; }
+  .bslot-ppl .n { font-weight: 600; }
+  .bslot-ppl .nt { font-size: 9px; opacity: .65; }
+  .bslot-empty { color: var(--text-dim); }
+
+  @media (max-width: 768px) {
+    .app-header { padding: 10px 14px; gap: 8px; }
+    .logo-icon { width: 34px; height: 34px; font-size: 18px; }
+    .header-title { font-size: 17px; } .header-subtitle { font-size: 11px; }
+    .header-right { width: 100%; }
+    .week-today-row { width: 100%; }
+    .week-nav { flex: 1; }
+    .week-label { min-width: 0; font-size: 12px; flex: 1; }
+    .btn-header { font-size: 11px; padding: 5px 9px; }
+    .setup-banner { padding: 8px 14px; }
+    .legend-bar { padding: 8px 14px; gap: 10px; }
+    .legend-people { margin-left: 0; width: 100%; }
+    .schedule-wrapper { padding: 12px 8px 30px; }
+    .cards { grid-template-columns: 1fr; gap: 10px; min-width: 0; }
+    .card { padding: 12px 14px; }
+    .card-edit .lbl { display: inline; }
+    .card-row { display: flex; gap: 9px; padding: 6px 4px; }
+    .card-row .tm { margin-left: auto; font-size: 13px; }
+    .notes-section { padding: 12px 14px; }
+    .log-compare { grid-template-columns: 1fr; gap: 4px; }
+    .log-arrow { transform: rotate(90deg); }
+    .modal-body { padding: 14px 16px; }
+    .batch-header { padding: 10px 14px; gap: 10px; }
+    .batch-tools { padding: 8px 12px; }
+    .batch-scroll { padding: 10px 12px 40px; }
+    .batch-cal { grid-template-columns: 1fr; min-width: 0; }
+    .bcal-wd, .bday.blank { display: none; }
+    .bslot { font-size: 12px; padding: 3px 10px; }
+    .bslot-time { width: 24px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="header-left">
+    <div class="logo-icon">🧩</div>
+    <div><div class="header-title">模型部排班表</div><div class="header-subtitle">08:00 – 22:00・每小時一格</div></div>
+  </div>
+  <div class="header-right">
+    <div class="week-today-row">
+      <div class="week-nav">
+        <button onclick="changeWeek(-1)" title="上一週">◀</button>
+        <span class="week-label" id="weekLabel"></span>
+        <button onclick="changeWeek(1)" title="下一週">▶</button>
+      </div>
+      <button class="btn-today" id="btnToday" onclick="goToday()" title="回到本週">TODAY</button>
+    </div>
+    <button class="btn-header" onclick="loadData()" title="重新載入雲端資料">⟳ 同步</button>
+    <button class="btn-header" onclick="openBatch()" title="在月曆上一次排多天的班">🗓️ 批量排班</button>
+    <button class="btn-header" onclick="openStaffLeave()" title="設定人員從某天起不再排班，之前的班表不受影響">👋 人員異動</button>
+    <button class="btn-header" onclick="openHistoryAuth()" title="待審核與修改記錄">📋 記錄</button>
+    <button class="btn-header" onclick="resetToDefault()" title="清除所有臨時調整與待審核">↺ 還原</button>
+  </div>
+</header>
+<div class="setup-banner" id="setupBanner">⚠️ 尚未設定後端網址：請依「部署說明.md」部署 Google Apps Script，再把網址填進 index.html 的 <code>API_URL</code>。</div>
+<div class="legend-bar">
+  <div class="view-toggle">
+    <button class="view-btn" data-v="timeline" onclick="setView('timeline')">📊 時間軸</button>
+    <button class="view-btn" data-v="cards" onclick="setView('cards')">🗂️ 卡片</button>
+  </div>
+  <div class="legend-item"><i class="mk ovr"></i>臨時調整</div>
+  <div class="legend-item"><i class="mk pend"></i>待審核</div>
+  <div class="legend-people" id="legendPeople"></div>
+</div>
+<div class="schedule-wrapper">
+  <div id="scheduleView"></div>
+  <div class="notes-section">
+    <div class="notes-title">📋 使用說明</div>
+    <div class="notes-content">
+      上方可切換「📊 時間軸」或「🗂️ 卡片」。時間軸點任一小時（或色塊上的那個小時）就能編輯；卡片點人員，或按「✎ 編輯」選時段。<br>
+      儲存時選「僅這週」只改那一天，選「這天之後的所有週」會改固定班表（之前的週次保留原樣）。要一次排一整段時間或很多天，用「🗓️ 批量排班」。<br>
+      主管輸入密碼直接生效；員工選自己的名字送出，會變成「待審核」，由主管在「📋 記錄」批准或拒絕。<br>
+      點上方人名可只看那個人的班。
+    </div>
+  </div>
+</div>
+
+<!-- 單格編輯 -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modalTitle">編輯班次</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEdit()">儲存</button></div>
+  </div>
+</div>
+<!-- 卡片：選這天的哪個小時來編輯 -->
+<div class="modal-overlay" id="hourPickModal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="hourPickTitle">選擇時段</h3><button class="modal-close" onclick="closeHourPicker()">✕</button></div>
+    <div class="modal-body" id="hourPickBody"></div>
+  </div>
+</div>
+<!-- 單格待審核 -->
+<div class="modal-overlay" id="reviewModal">
+  <div class="modal" style="width:500px;">
+    <div class="modal-header"><h3 id="reviewTitle">待審核修改</h3><button class="modal-close" onclick="closeReview()">✕</button></div>
+    <div class="modal-body" id="reviewBody"></div>
+  </div>
+</div>
+<!-- 儲存範圍＋身分 -->
+<div class="scope-overlay" id="saveScopeModal">
+  <div class="scope-modal">
+    <div class="scope-title" id="scopeTitle">儲存班表修改</div>
+    <div class="scope-desc" id="scopeStepDesc">選擇修改範圍</div>
+    <div id="scopeStep1">
+      <div class="scope-btns">
+        <button class="scope-btn" onclick="chooseSaveScope('this')">📅 僅這週</button>
+        <button class="scope-btn scope-all" onclick="chooseSaveScope('all')">🔄 這天之後的所有週</button>
+      </div>
+    </div>
+    <div id="scopeStep2" style="display:none;">
+      <div class="scope-pw-row">
+        <input type="password" class="scope-pw-input" id="scopePwInput" placeholder="主管密碼（直接生效）" autocomplete="off" onkeydown="if(event.key==='Enter')confirmWithPassword()">
+        <button class="scope-pw-confirm" onclick="confirmWithPassword()">確認</button>
+      </div>
+      <div class="scope-divider"><span>或 員工選自己的名字（送審核）</span></div>
+      <div class="scope-name-btns" id="staffNameBtns"></div>
+      <div class="scope-pw-row" style="margin-top:8px;">
+        <input type="text" class="scope-pw-input" id="staffNameInput" placeholder="輸入其他姓名" autocomplete="off" onkeydown="if(event.key==='Enter')confirmAsStaff()">
+        <button class="scope-pw-confirm" onclick="confirmAsStaff()">提交</button>
+      </div>
+      <div class="scope-pw-error" id="scopePwError" style="display:none;"></div>
+      <button class="scope-btn-back" id="scopeBackBtn" onclick="backToStep1()">← 返回</button>
+    </div>
+  </div>
+</div>
+<!-- 記錄密碼 -->
+<div class="scope-overlay" id="historyAuthModal">
+  <div class="scope-modal">
+    <div class="scope-title">待審核與修改記錄</div>
+    <div class="scope-desc">請輸入主管密碼</div>
+    <div class="scope-pw-row">
+      <input type="password" class="scope-pw-input" id="historyPwInput" placeholder="密碼" autocomplete="off" onkeydown="if(event.key==='Enter')confirmHistoryAuth()">
+      <button class="scope-pw-confirm" onclick="confirmHistoryAuth()">確認</button>
+    </div>
+    <div class="scope-pw-error" id="historyPwError" style="display:none;">密碼錯誤</div>
+  </div>
+</div>
+<!-- 人員異動 -->
+<div class="scope-overlay" id="staffLeaveModal">
+  <div class="scope-modal">
+    <div class="scope-title">👋 人員異動</div>
+    <div class="scope-desc">設定這個人從某天起不再排進固定班表，<b>之前的週次班表會保留原樣</b>，不會被回溯修改。</div>
+    <div style="margin-bottom:10px">
+      <label class="field-label">姓名</label>
+      <input type="text" class="form-input" id="slName" list="slNameList" placeholder="選擇或輸入姓名" autocomplete="off" style="width:100%">
+      <datalist id="slNameList"></datalist>
+    </div>
+    <div style="margin-bottom:12px">
+      <label class="field-label">生效日（含當天起不再排班）</label>
+      <input type="date" class="form-input" id="slDate" style="width:100%">
+    </div>
+    <div class="scope-pw-row">
+      <input type="password" class="scope-pw-input" id="slPwInput" placeholder="主管密碼" autocomplete="off" onkeydown="if(event.key==='Enter')confirmStaffLeave()">
+      <button class="scope-pw-confirm" onclick="confirmStaffLeave()">確認</button>
+    </div>
+    <div class="scope-pw-error" id="slError" style="display:none;"></div>
+    <button class="scope-btn-back" onclick="closeStaffLeave()">← 取消</button>
+  </div>
+</div>
+<!-- 批量排班（整月月曆） -->
+<div class="batch-overlay" id="batchModal">
+  <div class="batch-header">
+    <div class="batch-title">🗓️ 批量排班</div>
+    <div class="week-nav">
+      <button onclick="batchChangeMonth(-1)" title="上個月">◀</button>
+      <span class="week-label" id="batchMonthLabel" style="min-width:110px"></span>
+      <button onclick="batchChangeMonth(1)" title="下個月">▶</button>
+    </div>
+    <div class="batch-actions">
+      <span class="batch-count" id="batchCount">尚無變更</span>
+      <button class="btn-header" onclick="closeBatch()">取消</button>
+      <button class="btn-header" id="batchSaveBtn" onclick="saveBatch()" style="background:rgba(255,255,255,.3);font-weight:700">💾 儲存全部</button>
+    </div>
+  </div>
+  <div class="batch-tools">
+    <div class="bt-modes">
+      <button class="bt-mode" id="btModeAdd" onclick="batchSetMode('add')">➕ 點日期加人</button>
+      <button class="bt-mode" id="btModeEdit" onclick="batchSetMode('edit')">✏️ 逐格編輯</button>
+    </div>
+    <div id="btAddPanel">
+      <div class="bt-row">
+        <span class="bt-label">① 人員</span>
+        <input class="form-input bt-name" id="btName" list="btNameList" placeholder="姓名" autocomplete="off" oninput="batchPickChanged()">
+        <datalist id="btNameList"></datalist>
+        <span id="btNameChips" class="bt-chips"></span>
+        <span class="bt-label" style="margin-left:10px">備註</span>
+        <input class="form-input bt-note" id="btNote" placeholder="選填，例：到1430" autocomplete="off">
+      </div>
+      <div class="bt-row">
+        <span class="bt-label">② 時段</span>
+        <span id="btSlots" class="bt-chips"></span>
+        <button class="bt-opt mini" onclick="batchPickSlotRange(8,12)">08–12</button>
+        <button class="bt-opt mini" onclick="batchPickSlotRange(13,18)">13–18</button>
+        <button class="bt-opt mini" onclick="batchPickSlotRange(18,22)">18–22</button>
+        <button class="bt-opt mini" onclick="batchPickSlotRange(0,0)">清除</button>
+      </div>
+      <div class="bt-row">
+        <span class="bt-label">③ 期間</span>
+        <input type="date" class="form-input bt-date" id="btFrom">
+        <span>~</span>
+        <input type="date" class="form-input bt-date" id="btTo">
+        <span id="btWeekdays" class="bt-chips" style="margin-left:6px"></span>
+        <button class="btn btn-primary" onclick="batchApplyRange(false)">＋ 加入這段期間</button>
+        <button class="btn" onclick="batchApplyRange(true)">－ 從這段期間移除</button>
+      </div>
+      <div class="bt-row bt-tip" id="btTip"></div>
+    </div>
+    <div class="bt-legend">
+      <span><span class="sw" style="background:#fbefc9;border:1px solid #e6d28f"></span>尚未儲存</span>
+      <span><span class="sw" style="background:#efeaf5;border:1px solid #d6cce6"></span>已有臨時調整</span>
+      <span><span class="sw" style="background:#e9e2f3;border:1px solid #cdbfe0"></span>日期列變紫＝選的人已排在這些時段（點了會取消）</span>
+      <span>「複製」一天後可「貼上」到其他天；可切換月份，最後一次儲存。</span>
+    </div>
+  </div>
+  <div class="batch-scroll"><div class="batch-cal" id="batchCal"></div></div>
+</div>
+<div class="modal-overlay" id="batchEditModal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="batchEditTitle">編輯時段</h3><button class="modal-close" onclick="closeBatchEdit()">✕</button></div>
+    <div class="modal-body" id="batchEditBody"></div>
+    <div class="modal-footer split">
+      <div style="display:flex;gap:6px">
+        <button class="btn" onclick="batchEditClear()" title="這個時段不排人">🚫 清空</button>
+        <button class="btn" onclick="batchEditRevert()" title="回到所有週的固定班表">↺ 用固定班表</button>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn" onclick="closeBatchEdit()">取消</button>
+        <button class="btn btn-primary" onclick="batchEditApply()">套用</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- 管理面板 -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal" style="width:620px;">
+    <div class="modal-header"><h3>管理面板</h3><button class="modal-close" onclick="closeHistory()">✕</button></div>
+    <div class="history-tabs">
+      <button class="history-tab active" id="tabPending" onclick="switchHistoryTab('pending')">⏳ 待審核 <span class="pending-count" id="pendingCount"></span></button>
+      <button class="history-tab" id="tabLog" onclick="switchHistoryTab('log')">📋 修改記錄</button>
+    </div>
+    <div class="modal-body" id="historyBody"></div>
+  </div>
+</div>
+
+<script>
+// ─── 設定（部署後填 API_URL；人員固定顏色可填 PERSON_COLORS，沒填的人會自動配色） ───
+const API_URL = 'https://script.google.com/macros/s/AKfycbz2CU-B8uVmibbbovl9gGSf53yInfR1H7R6_rCK8gsa7MX_uzIkIsw5HBu8ymzkYQ5OFw/exec';
+const DAYS = ['一','二','三','四','五','六','日'];
+const pad2 = n => String(n).padStart(2, '0');
+// 08:00 ~ 22:00 每小時一格：h08 ~ h21
+const TIME_SLOTS = Array.from({ length: 14 }, (_, i) => {
+  const h = 8 + i;
+  return { id: 'h' + pad2(h), hour: h, label: pad2(h) + ':00', time: pad2(h + 1) + ':00' };
+});
+const PERSON_COLORS = {
+  // '阿明': { bg: '#d6dde6', border: '#a8b5c4', text: '#4e6070' },
+};
+const AUTO_COLORS = [
+  { bg: '#d6dde6', border: '#a8b5c4', text: '#4e6070' },
+  { bg: '#d4e4da', border: '#a4c8b0', text: '#456856' },
+  { bg: '#e6d6e0', border: '#c8a4b8', text: '#6e4860' },
+  { bg: '#e6dcd0', border: '#ccb89c', text: '#6e5838' },
+  { bg: '#cce4dc', border: '#96c8b8', text: '#386858' },
+  { bg: '#e6d2d0', border: '#cca8a4', text: '#704240' },
+  { bg: '#dcd6ea', border: '#b4aad2', text: '#54487a' },
+  { bg: '#e8e2c8', border: '#cdc290', text: '#665a24' },
+  { bg: '#d0e2ea', border: '#98c0d2', text: '#365e70' },
+  { bg: '#ead6c8', border: '#d2ac94', text: '#74482e' },
+];
+// 主管密碼不放在網頁裡：輸入的密碼雜湊後送到後端（Apps Script 的 ADMINS）驗證，新增／換密碼改後端
+// 系統開始使用那週的週一；「所有週」改固定班表時，從這天起的過去週次會被保留原樣
+const FREEZE_FROM = '2026-11-02';
+
+let scheduleData = {}, overrides = {}, pendingData = [];
+let currentWeekOffset = 0, filterPerson = null;
+let editingCell = null, editingDateKey = null;
+let mobileDay = 0, mobileDayUserSelected = false;
+const isMobile = () => window.innerWidth <= 768;
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function clone(d) { return d ? JSON.parse(JSON.stringify(d)) : null; }
+function people(cd) { return (cd && cd.people) || []; }
+function slotById(id) { return TIME_SLOTS.find(s => s.id === id); }
+function slotText(id) { const s = slotById(id); return s ? s.label + ' ~ ' + s.time : id; }
+
+function init() {
+  document.getElementById('setupBanner').classList.toggle('show', !API_URL);
+  loadData();
+  // 跨過手機／桌機寬度時重畫（時間軸在手機上一次只顯示一天）
+  let wasMobile = isMobile();
+  window.addEventListener('resize', () => { if (isMobile() !== wasMobile) { wasMobile = isMobile(); renderView(); } });
+  // 時間軸上的「現在」紅線每 5 分鐘更新
+  setInterval(() => { if (viewMode === 'timeline' && currentWeekOffset === 0) renderView(); }, 300000);
+}
+
+function renderAll() {
+  updateWeekLabel(); renderView(); renderLegend(); updateTodayBtn();
+}
+
+/* 上次從雲端載入的班表存在瀏覽器，開頁先顯示它 */
+const CACHE_KEY = 'modelScheduleCache_v1';
+function readCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { return null; } }
+function writeCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ template: scheduleData, overrides: overrides, pending: pendingData })); } catch (e) {} }
+
+function loadData() {
+  const cached = readCache();
+  if (cached && cached.template) {
+    scheduleData = cached.template; overrides = cached.overrides || {}; pendingData = cached.pending || [];
+  }
+  renderAll();
+  if (!API_URL) { showToast('尚未設定後端網址（API_URL）'); return; }
+  showToast(cached ? '更新班表中...' : '載入班表中...');
+  fetch(API_URL + '?action=read')
+    .then(r => r.json())
+    .then(data => {
+      if (data.error || !data.template) throw new Error(data.error || '回傳格式錯誤');
+      scheduleData = data.template; overrides = data.overrides || {}; pendingData = data.pending || [];
+      writeCache();
+      renderAll();
+    })
+    .catch(e => {
+      console.error('載入失敗', e);
+      showToast(cached ? '無法連線雲端，目前顯示上次載入的班表' : '無法連線雲端，請重新整理');
+    });
+}
+
+// 主管通過驗證後，主管動作都帶上 auth（密碼雜湊）給後端再驗一次
+let adminAuth = null;
+function apiPost(body) {
+  if (!API_URL) return Promise.reject(new Error('尚未設定 API_URL'));
+  if (adminAuth && !body.auth) body = Object.assign({ auth: adminAuth }, body);
+  return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }).then(r => r.json());
+}
+// 後端回傳失敗就丟錯，讓呼叫端的 .catch 顯示失敗
+function okOrThrow(resp) {
+  if (!resp || !resp.success) throw new Error((resp && resp.error) || '儲存失敗');
+  return resp;
+}
+
+function sha256(msg) {
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg))
+    .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
+}
+// 回傳主管名稱；密碼錯誤回傳 null（連不上後端會另外跳提示）
+function adminByPassword(pw) {
+  if (!pw) return Promise.resolve(null);
+  return sha256(pw).then(hash => apiPost({ action: 'checkAdmin', auth: hash }).then(resp => {
+    if (resp && resp.success) { adminAuth = hash; return resp.name; }
+    if (resp && resp.error && resp.error !== 'unauthorized') showToast(resp.error);
+    return null;
+  })).catch(() => { showToast('無法連線雲端，請稍後再試'); return null; });
+}
+
+/* ─── 日期工具（一律用當地日期組字串，不用 toISOString） ─── */
+function dateStr(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+function dayIdx(d) { return (d.getDay() + 6) % 7; }
+function parseDate(s) { const p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2], 12); }
+function keyParts(dk) {
+  const i = dk.indexOf('_'), date = parseDate(dk.slice(0, i)), slot = dk.slice(i + 1);
+  return { date: date, slot: slot, tk: slot + '-' + DAYS[dayIdx(date)] };
+}
+function dayLabel(date) { return (date.getMonth() + 1) + '/' + date.getDate() + '(週' + DAYS[dayIdx(date)] + ')'; }
+function getWeekDates(offset) {
+  const now = new Date(); now.setHours(12, 0, 0, 0);
+  const mo = new Date(now); mo.setDate(now.getDate() - dayIdx(now) + offset * 7);
+  return Array.from({ length: 7 }, (_, i) => { const d = new Date(mo); d.setDate(mo.getDate() + i); return d; });
+}
+function isToday(d) { return dateStr(d) === dateStr(new Date()); }
+
+/* 某天某時段實際顯示的內容：臨時調整優先，沒有就用固定班表 */
+function getCell(slotId, date) {
+  const dk = dateStr(date) + '_' + slotId;
+  if (overrides[dk]) return { data: overrides[dk], isOverride: true, dateKey: dk, templateKey: slotId + '-' + DAYS[dayIdx(date)] };
+  const tk = slotId + '-' + DAYS[dayIdx(date)];
+  return { data: scheduleData[tk] || null, isOverride: false, dateKey: dk, templateKey: tk };
+}
+function currentOf(dk) { return overrides[dk] || scheduleData[keyParts(dk).tk] || null; }
+
+function updateWeekLabel() { const d = getWeekDates(currentWeekOffset), f = x => (x.getMonth() + 1) + '/' + x.getDate(); document.getElementById('weekLabel').textContent = d[0].getFullYear() + ' ' + f(d[0]) + ' — ' + f(d[6]); }
+function updateTodayBtn() { document.getElementById('btnToday').classList.toggle('is-current-week', currentWeekOffset === 0); }
+function changeWeek(dir) { currentWeekOffset += dir; mobileDayUserSelected = false; renderAll(); }
+function goToday() { if (currentWeekOffset === 0) return; currentWeekOffset = 0; mobileDayUserSelected = false; renderAll(); }
+
+/* ─── 人員顏色 ─── */
+function personColor(name) {
+  if (PERSON_COLORS[name]) return PERSON_COLORS[name];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return AUTO_COLORS[h % AUTO_COLORS.length];
+}
+function ps(name) { const c = personColor(name); return 'background:' + c.bg + ';border-color:' + c.border + ';color:' + c.text; }
+
+/* ─── 把每小時的名單合併成「人員時段」：同一人連續的小時併成一段 ─── */
+function daySegments(date) {
+  const segs = [], open = {};
+  TIME_SLOTS.forEach(slot => {
+    const here = {};
+    people(getCell(slot.id, date).data).forEach(p => {
+      here[p.name] = 1;
+      const s = open[p.name];
+      if (s) { s.end = slot.hour + 1; if (p.note && s.notes.indexOf(p.note) < 0) s.notes.push(p.note); }
+      else { open[p.name] = { name: p.name, start: slot.hour, end: slot.hour + 1, notes: p.note ? [p.note] : [] }; segs.push(open[p.name]); }
+    });
+    Object.keys(open).forEach(n => { if (!here[n]) delete open[n]; });
+  });
+  return segs;
+}
+
+// 時間重疊的色塊才分欄：先把彼此重疊的時段分成一群，每群各自算要幾欄（沒重疊的色塊佔滿整欄）
+function layoutLanes(segs) {
+  const sorted = segs.slice().sort((a, b) => a.start - b.start || b.end - a.end);
+  let group = [], lanes = [], groupEnd = -1;
+  // 每個色塊再往右延伸，佔掉右邊同時段沒人用的欄位（不會被擠成一小條）
+  const flush = () => {
+    group.forEach(s => {
+      s.lanes = lanes.length; s.span = 1;
+      for (let k = s.lane + 1; k < lanes.length; k++) {
+        if (group.some(o => o.lane === k && o.start < s.end && s.start < o.end)) break;
+        s.span++;
+      }
+    });
+    group = []; lanes = [];
+  };
+  sorted.forEach(s => {
+    if (s.start >= groupEnd) flush();
+    let l = lanes.findIndex(end => end <= s.start);
+    if (l < 0) { l = lanes.length; lanes.push(0); }
+    lanes[l] = s.end; s.lane = l; group.push(s);
+    groupEnd = Math.max(groupEnd, s.end);
+  });
+  flush();
+  return sorted;
+}
+
+function segTime(s) { return pad2(s.start) + ':00–' + pad2(s.end) + ':00'; }
+function hourMark(date, slot) {
+  const cell = getCell(slot.id, date);
+  return hasPending(cell.templateKey, cell.dateKey) ? 'pend' : (cell.isOverride ? 'ovr' : '');
+}
+function dimCls(name) { return filterPerson && filterPerson !== name ? ' dimmed' : ''; }
+
+/* ─── 畫面切換：時間軸／卡片（記在這台裝置） ─── */
+const VIEW_KEY = 'modelScheduleView';
+let viewMode = (() => { try { return localStorage.getItem(VIEW_KEY); } catch (e) { return null; } })() || (isMobile() ? 'cards' : 'timeline');
+function setView(v) { viewMode = v; try { localStorage.setItem(VIEW_KEY, v); } catch (e) {} renderView(); }
+
+function renderView() {
+  const dates = getWeekDates(currentWeekOffset);
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.v === viewMode));
+  let h;
+  if (viewMode === 'cards') h = renderCards(dates);
+  else if (isMobile()) {
+    if (!mobileDayUserSelected) { const ti = dates.findIndex(isToday); mobileDay = ti >= 0 ? ti : 0; }
+    h = '<div class="mobile-day-tabs">' + dates.map((date, i) =>
+      '<div class="mobile-day-tab' + (mobileDay === i ? ' active' : '') + (isToday(date) ? ' is-today' : '') + '" onclick="selectMobileDay(' + i + ')">' +
+      '<div class="tab-day">' + DAYS[i] + '</div><div class="tab-date">' + (date.getMonth() + 1) + '/' + date.getDate() + '</div></div>').join('') + '</div>';
+    h += renderTimeline(dates, [mobileDay]);
+  } else h = renderTimeline(dates, [0, 1, 2, 3, 4, 5, 6]);
+  document.getElementById('scheduleView').innerHTML = h;
+}
+function selectMobileDay(i) { mobileDay = i; mobileDayUserSelected = true; renderView(); }
+
+/* ─── A 時間軸 ─── */
+const HOUR_PX = 40, FIRST_HOUR = TIME_SLOTS[0].hour;
+function renderTimeline(dates, idxs) {
+  const total = TIME_SLOTS.length * HOUR_PX;
+  let h = '<div class="tl' + (idxs.length > 1 ? ' week' : '') + '" style="grid-template-columns:50px repeat(' + idxs.length + ',minmax(0,1fr))"><div class="tl-dh"></div>';
+  idxs.forEach(di => {
+    const d = dates[di], t = isToday(d);
+    h += '<div class="tl-dh' + (t ? ' today' : '') + '">週' + DAYS[di] + (t ? '<span class="today-badge">TODAY</span>' : '') + '<small>' + (d.getMonth() + 1) + '/' + d.getDate() + '</small></div>';
+  });
+  h += '<div class="tl-axis" style="height:' + total + 'px">' + TIME_SLOTS.map((s, i) => '<span style="top:' + i * HOUR_PX + 'px">' + s.label + '</span>').join('') + '</div>';
+  idxs.forEach(di => {
+    const date = dates[di];
+    h += '<div class="tl-col' + (isToday(date) ? ' today' : '') + '" style="height:' + total + 'px">';
+    // 底層：每小時一格，點了就編輯那個小時
+    TIME_SLOTS.forEach((slot, i) => {
+      const mk = hourMark(date, slot);
+      h += '<div class="tl-hr" style="top:' + i * HOUR_PX + 'px;height:' + HOUR_PX + 'px" title="' + dayLabel(date) + ' ' + slotText(slot.id) + '" onclick="openEdit(\'' + slot.id + '\',' + di + ')">' +
+        (mk ? '<i class="mk ' + mk + '"></i>' : '') + '</div>';
+    });
+    // 上層：人員色塊（右邊留 10px 給臨時調整／待審核的小圓點）
+    layoutLanes(daySegments(date)).forEach(s => {
+      // 色塊太窄（約小於 55px）就只顯示名字，時間看滑鼠提示；一週七欄每欄約 160px，手機單日約 400px
+      const c = personColor(s.name), many = (idxs.length > 1 ? 160 : 400) * s.span / s.lanes < 55;
+      const tip = s.name + ' ' + segTime(s) + (s.notes.length ? '（' + s.notes.join('、') + '）' : '');
+      h += '<div class="tl-bar' + (many ? ' compact' : '') + dimCls(s.name) + '" title="' + esc(tip) + '" onclick="timelineBarClick(event,' + di + ',' + s.start + ',' + s.end + ')" style="' +
+        'top:' + ((s.start - FIRST_HOUR) * HOUR_PX + 2) + 'px;height:' + ((s.end - s.start) * HOUR_PX - 4) + 'px;' +
+        'left:calc((100% - 12px) * ' + (s.lane / s.lanes).toFixed(4) + ' + 2px);width:calc((100% - 12px) * ' + (s.span / s.lanes).toFixed(4) + ' - 2px);' +
+        'background:' + c.bg + ';border-color:' + c.border + ';color:' + c.text + '">' +
+        '<b>' + esc(s.name) + '</b>' + (many ? '' : '<small class="t">' + pad2(s.start) + '–' + pad2(s.end) + '</small>' + (s.notes.length ? '<small>' + esc(s.notes.join('、')) + '</small>' : '')) + '</div>';
+    });
+    if (isToday(date)) {
+      const now = new Date(), nh = now.getHours() + now.getMinutes() / 60;
+      if (nh >= FIRST_HOUR && nh <= FIRST_HOUR + TIME_SLOTS.length) h += '<div class="tl-now" style="top:' + ((nh - FIRST_HOUR) * HOUR_PX - 1) + 'px"></div>';
+    }
+    h += '</div>';
+  });
+  return h + '</div>';
+}
+
+// 點色塊：依點的位置換算成那個小時，打開那個小時的編輯
+function timelineBarClick(ev, di, start, end) {
+  const r = ev.currentTarget.getBoundingClientRect();
+  const hr = Math.max(start, Math.min(end - 1, start + Math.floor((ev.clientY - r.top + 2) / HOUR_PX)));
+  openEdit('h' + pad2(hr), di);
+}
+
+/* ─── E 卡片 ─── */
+function renderCards(dates) {
+  const span = TIME_SLOTS.length;
+  let h = '<div class="cards">';
+  dates.forEach((date, di) => {
+    const segs = daySegments(date).sort((a, b) => a.start - b.start || a.end - b.end);
+    const pend = TIME_SLOTS.filter(s => hourMark(date, s) === 'pend').length;
+    h += '<div class="card' + (isToday(date) ? ' today' : '') + '"><div class="card-hd"><b>週' + DAYS[di] + '</b><small>' + (date.getMonth() + 1) + '/' + date.getDate() + '</small>' +
+      (isToday(date) ? '<em>今天</em>' : '') + (pend ? '<span class="badge">待審核 ' + pend + '</span>' : '') +
+      '<button class="card-edit" title="編輯這天" onclick="openHourPicker(' + di + ')">✎<span class="lbl"> 編輯</span></button></div>';
+    if (!segs.length) { h += '<div class="card-none" onclick="openHourPicker(' + di + ')">本日無排班</div></div>'; return; }
+    // 一人一細條上下疊，重疊時段一眼看出有幾個人
+    h += '<div class="card-lanes">' + segs.map(s => '<i class="' + dimCls(s.name).trim() + '" title="' + esc(s.name + ' ' + segTime(s)) + '" style="margin-left:' + ((s.start - FIRST_HOUR) / span * 100) + '%;width:' + ((s.end - s.start) / span * 100) + '%;background:' + personColor(s.name).border + '"></i>').join('') +
+      [8, 12, 16, 20].map(x => '<span class="tick" style="left:' + ((x - FIRST_HOUR) / span * 100) + '%">' + pad2(x) + '</span>').join('') + '</div>';
+    segs.forEach(s => {
+      const c = personColor(s.name);
+      const mks = [];
+      for (let x = s.start; x < s.end; x++) { const m = hourMark(date, slotById('h' + pad2(x))); if (m && mks.indexOf(m) < 0) mks.push(m); }
+      h += '<div class="card-row' + dimCls(s.name) + '" onclick="openEdit(\'h' + pad2(s.start) + '\',' + di + ')">' +
+        '<span class="av" style="background:' + c.bg + ';border-color:' + c.border + ';color:' + c.text + '">' + esc(s.name.slice(-1)) + '</span>' +
+        '<span class="nm">' + esc(s.name) + (s.notes.length ? '<small>' + esc(s.notes.join('、')) + '</small>' : '') + '</span>' +
+        '<span class="tm">' + segTime(s) + mks.map(m => '<i class="mk ' + m + '"></i>').join('') + '</span></div>';
+    });
+    h += '</div>';
+  });
+  return h + '</div>';
+}
+
+// 卡片的「✎ 編輯」：列出這天每個小時，選一個進去編輯
+function openHourPicker(di) {
+  const date = getWeekDates(currentWeekOffset)[di];
+  document.getElementById('hourPickTitle').textContent = '選擇時段｜' + dayLabel(date);
+  document.getElementById('hourPickBody').innerHTML = TIME_SLOTS.map(slot => {
+    const list = people(getCell(slot.id, date).data), mk = hourMark(date, slot);
+    return '<div class="hp-row" onclick="closeHourPicker();openEdit(\'' + slot.id + '\',' + di + ')"><span class="t">' + slotText(slot.id) + '</span><span class="ppl">' +
+      (list.length ? list.map(p => '<span class="tag" style="' + ps(p.name) + '">' + esc(p.name) + '</span>').join('') : '<span class="none">—</span>') + '</span>' +
+      (mk ? '<i class="mk ' + mk + '"></i>' : '') + '</div>';
+  }).join('');
+  document.getElementById('hourPickModal').classList.add('active');
+}
+function closeHourPicker() { document.getElementById('hourPickModal').classList.remove('active'); }
+
+/* ─── 人員篩選 ─── */
+function knownNames(extra) {
+  const set = {};
+  Object.keys(PERSON_COLORS).forEach(n => { set[n] = 1; });
+  [scheduleData, overrides].concat(extra || []).forEach(src => {
+    Object.keys(src).forEach(k => people(src[k]).forEach(p => { if (p.name) set[p.name] = 1; }));
+  });
+  return Object.keys(set);
+}
+
+function renderLegend() {
+  const names = knownNames();
+  const el = document.getElementById('legendPeople');
+  if (!names.length) { el.innerHTML = '<span class="hint">還沒有人排班，點任一格開始排</span>'; return; }
+  el.innerHTML = names.map(n => '<span class="person-chip' + (filterPerson === n ? ' active' : '') + '" data-name="' + esc(n) + '" onclick="toggleFilter(this.dataset.name)">' +
+    '<span class="dot" style="background:' + personColor(n).border + '"></span>' + esc(n) + '</span>').join('');
+}
+function toggleFilter(name) { filterPerson = filterPerson === name ? null : name; renderLegend(); renderView(); }
+
+/* ─── 單格編輯 ─── */
+function pRow(prefix, name, note) {
+  return '<div class="form-row"><input class="form-input" type="text" placeholder="姓名" value="' + esc(name) + '" data-field="name" list="nameList_' + prefix + '">' +
+    '<input class="form-input note-input" type="text" placeholder="備註（選填）" value="' + esc(note) + '" data-field="note">' +
+    '<button class="btn-remove" onclick="this.parentElement.remove()">✕</button></div>';
+}
+function addPerson(prefix, name) {
+  const c = document.getElementById(prefix + 'Rows');
+  c.insertAdjacentHTML('beforeend', pRow(prefix, name || '', ''));
+  if (!name) c.lastElementChild.querySelector('input').focus();
+}
+function readRows(prefix) {
+  const out = [];
+  document.querySelectorAll('#' + prefix + 'Rows .form-row').forEach(r => {
+    const n = r.querySelector('[data-field="name"]').value.trim(), t = r.querySelector('[data-field="note"]').value.trim();
+    if (n && !out.some(p => p.name === n)) out.push({ name: n, note: t });
+  });
+  return out;
+}
+// 編輯視窗內容：快速加入的人名按鈕＋每人一列
+function editorHTML(prefix, data) {
+  const names = knownNames();
+  let h = '';
+  if (names.length) {
+    h += '<div class="bchips"><div class="bchips-label">快速加入</div>' +
+      names.map(n => '<button class="bchip" style="' + ps(n) + '" data-name="' + esc(n) + '" onclick="addPerson(\'' + prefix + '\',this.dataset.name)">' + esc(n) + '</button>').join('') + '</div>';
+  }
+  h += '<datalist id="nameList_' + prefix + '">' + names.map(n => '<option value="' + esc(n) + '">').join('') + '</datalist>';
+  h += '<div class="form-section-title">👤 排班人員</div><div id="' + prefix + 'Rows">';
+  people(data).forEach(p => { h += pRow(prefix, p.name, p.note); });
+  h += '</div><button class="btn-add-person" onclick="addPerson(\'' + prefix + '\')">+ 新增人員</button>';
+  return h;
+}
+
+function openEdit(slotId, di) {
+  const date = getWeekDates(currentWeekOffset)[di];
+  const cell = getCell(slotId, date);
+  const cellPending = pendingData.filter(p => pendingMatches(p, cell.templateKey, cell.dateKey));
+  if (cellPending.length) { openReview(slotId, di, cellPending, cell.data); return; }
+  openEditDirect(slotId, di);
+}
+
+function openEditDirect(slotId, di) {
+  const date = getWeekDates(currentWeekOffset)[di];
+  const cell = getCell(slotId, date);
+  editingCell = cell.templateKey; editingDateKey = cell.dateKey;
+  document.getElementById('modalTitle').textContent = '編輯｜' + dayLabel(date) + '・' + slotText(slotId);
+  document.getElementById('modalBody').innerHTML = editorHTML('edit', cell.data);
+  document.getElementById('editModal').classList.add('active');
+}
+
+function closeModal() { document.getElementById('editModal').classList.remove('active'); }
+
+function saveEdit() {
+  const list = readRows('edit');
+  window._pendingSave = list.length ? { people: list } : null;
+  window._pendingSaveCell = editingCell;
+  window._pendingSaveDateKey = editingDateKey;
+  closeModal();
+  showSaveScope();
+}
+
+/* ─── 儲存範圍＋身分 ─── */
+function showSaveScope() {
+  window._batchSaving = false;
+  document.getElementById('scopeTitle').textContent = '儲存班表修改';
+  document.getElementById('scopeStepDesc').textContent = '選擇修改範圍';
+  document.getElementById('scopeBackBtn').style.display = '';
+  document.getElementById('scopeStep1').style.display = 'block';
+  document.getElementById('scopeStep2').style.display = 'none';
+  document.getElementById('saveScopeModal').classList.add('active');
+}
+
+function chooseSaveScope(scope) {
+  window._pendingScope = scope;
+  document.getElementById('scopeStep1').style.display = 'none';
+  document.getElementById('scopeStep2').style.display = 'block';
+  document.getElementById('scopeStepDesc').textContent = scope === 'all' ? '改固定班表（這天之後的所有週）— 確認身分' : '只改這一天 — 確認身分';
+  document.getElementById('scopePwInput').value = '';
+  document.getElementById('staffNameInput').value = '';
+  document.getElementById('scopePwError').style.display = 'none';
+  document.getElementById('staffNameBtns').innerHTML = knownNames(window._batchSaving ? [batchDraft] : []).map(n =>
+    '<button class="scope-name-btn" data-name="' + esc(n) + '" onclick="confirmAsStaffName(this.dataset.name)">' + esc(n) + '</button>').join('');
+  setTimeout(() => document.getElementById('scopePwInput').focus(), 50);
+}
+
+function backToStep1() {
+  document.getElementById('scopeStep1').style.display = 'block';
+  document.getElementById('scopeStep2').style.display = 'none';
+  document.getElementById('scopeStepDesc').textContent = '選擇修改範圍';
+}
+function closeScope() { document.getElementById('saveScopeModal').classList.remove('active'); }
+function scopeError(msg) { const e = document.getElementById('scopePwError'); e.textContent = msg; e.style.display = 'block'; }
+
+function confirmWithPassword() {
+  const input = document.getElementById('scopePwInput');
+  if (!input.value) return;
+  adminByPassword(input.value).then(name => {
+    if (!name) { scopeError('密碼錯誤'); input.value = ''; return; }
+    closeScope();
+    confirmSaveScope(window._pendingScope, name, true);
+  });
+}
+function confirmAsStaffName(name) { closeScope(); confirmSaveScope(window._pendingScope, name, false); }
+function confirmAsStaff() {
+  const name = document.getElementById('staffNameInput').value.trim();
+  if (!name) { scopeError('請輸入姓名'); return; }
+  confirmAsStaffName(name);
+}
+
+/* 「所有週」改固定班表前，把被改日期之前（FREEZE_FROM 起）的同一格用舊固定班表存成臨時調整，
+ * 讓過去的週保持原樣。已有臨時調整的日期不動。 */
+function freezePastWeeks(templateKey, dateKey, user) {
+  const kp = keyParts(dateKey);
+  const tmpl = scheduleData[templateKey] || null;
+  const frozen = tmpl ? clone(tmpl) : { people: [] };
+  const d = parseDate(FREEZE_FROM);
+  while (dayIdx(d) !== dayIdx(kp.date)) d.setDate(d.getDate() + 1);
+  const changes = [];
+  for (; dateStr(d) < dateStr(kp.date); d.setDate(d.getDate() + 7)) {
+    const dk = dateStr(d) + '_' + kp.slot;
+    if (overrides[dk]) continue;
+    changes.push({ dateKey: dk, templateKey: templateKey, data: clone(frozen), oldData: tmpl, newData: frozen });
+  }
+  if (!changes.length) return Promise.resolve();
+  return apiPost({ action: 'saveOverridesBatch', user: user, silent: true, changes: changes }).then(resp => {
+    if (!resp || !resp.success) throw new Error((resp && resp.error) || '保留過去週失敗');
+    changes.forEach(c => { overrides[c.dateKey] = c.data; });
+  });
+}
+
+function confirmSaveScope(scope, userName, isAdmin) {
+  if (window._batchSaving) { window._batchSaving = false; batchCommit(userName, isAdmin); return; }
+  const newData = window._pendingSave, cellKey = window._pendingSaveCell, dateKey = window._pendingSaveDateKey;
+  const oldData = currentOf(dateKey);
+  const scopeName = scope === 'all' ? '所有週' : '僅這週';
+
+  if (isAdmin && scope === 'all') {
+    showToast('儲存中...');
+    // 先保留過去的週，成功後才改固定班表
+    freezePastWeeks(cellKey, dateKey, userName)
+      .then(() => {
+        if (newData) scheduleData[cellKey] = newData; else delete scheduleData[cellKey];
+        delete overrides[dateKey]; writeCache(); renderAll();
+        return Promise.all([
+          apiPost({ action: 'saveTemplate', key: cellKey, data: newData, oldData: oldData, user: userName }),
+          apiPost({ action: 'deleteOverride', dateKey: dateKey })
+        ]);
+      })
+      .then(rs => { rs.forEach(okOrThrow); showToast(userName + ' 已更新這天之後的所有週'); })
+      .catch(() => { showToast('儲存失敗，請按「同步」後再試'); });
+  } else if (isAdmin) {
+    // 臨時調整一律存成物件（清空＝空名單），才蓋得過固定班表
+    const data = newData || { people: [] };
+    overrides[dateKey] = data; writeCache(); renderAll(); showToast('儲存中...');
+    apiPost({ action: 'saveOverride', dateKey: dateKey, data: data, oldData: oldData, user: userName })
+      .then(resp => { okOrThrow(resp); showToast(userName + ' 已儲存這天的調整'); })
+      .catch(() => showToast('儲存失敗，請按「同步」後再試'));
+  } else {
+    showToast('提交中...');
+    const data = scope === 'all' ? newData : (newData || { people: [] });
+    apiPost({ action: 'submitPending', user: userName, scope: scopeName, templateKey: cellKey, dateKey: dateKey, data: data, oldData: oldData })
+      .then(resp => {
+        if (!resp.success) throw new Error();
+        pendingData.push({ id: resp.id, user: userName, scope: scopeName, templateKey: cellKey, dateKey: dateKey, data: data, oldData: oldData });
+        writeCache(); renderAll(); showToast(userName + ' 已提交，待主管審核');
+      })
+      .catch(() => showToast('提交失敗'));
+  }
+  window._pendingSave = null; window._pendingSaveCell = null; window._pendingSaveDateKey = null;
+}
+
+/* ─── 待審核 ─── */
+// 「所有週」的待審核對應每週同一格；「僅這週」只對應那一天
+function pendingMatches(p, templateKey, dateKey) {
+  if (p.scope === '所有週') return p.templateKey === templateKey;
+  return p.dateKey ? p.dateKey === dateKey : p.templateKey === templateKey;
+}
+function hasPending(templateKey, dateKey) { return pendingData.some(p => pendingMatches(p, templateKey, dateKey)); }
+
+function peopleInline(data) {
+  const list = people(data);
+  if (!data) return '<span style="color:var(--text-dim)">（無排班）</span>';
+  if (!list.length) return '<span style="color:var(--text-dim)">（空）</span>';
+  return list.map(p => '<strong>' + esc(p.name) + '</strong>' + (p.note ? '<span style="font-size:10px;opacity:.6"> ' + esc(p.note) + '</span>' : '')).join('、');
+}
+
+function slotKeyLabel(p) {
+  if (p.scope === '所有週') { const i = p.templateKey.indexOf('-'); return '每週' + p.templateKey.slice(i + 1) + ' ' + slotText(p.templateKey.slice(0, i)); }
+  const kp = keyParts(p.dateKey);
+  return dayLabel(kp.date) + ' ' + slotText(kp.slot);
+}
+
+function pendingCardHTML(p, idx, prefix, currentData) {
+  let h = '<div class="pending-card"><div class="log-meta">' +
+    '<span class="log-user">' + esc(p.user) + '</span>' +
+    '<span class="log-scope' + (p.scope === '所有週' ? '' : ' this') + '">' + esc(p.scope) + '</span>' +
+    '<span class="log-key">' + esc(slotKeyLabel(p)) + '</span>' +
+    (p.timestamp ? '<span class="log-time">' + esc(p.timestamp) + '</span>' : '') + '</div>';
+  h += '<div class="log-compare"><div class="log-box"><div class="log-box-title">目前</div>' + peopleInline(currentData !== undefined ? currentData : p.oldData) + '</div>' +
+    '<div class="log-arrow">→</div><div class="log-box new"><div class="log-box-title">修改為</div>' + peopleInline(p.data) + '</div></div>';
+  h += '<div class="review-pw-row"><input type="password" class="scope-pw-input" id="' + prefix + 'Pw_' + idx + '" placeholder="主管密碼" onkeydown="if(event.key===\'Enter\')pendingAction(\'' + p.id + '\',\'' + prefix + '\',' + idx + ',\'approve\')"></div>';
+  h += '<div class="review-actions"><button class="btn-approve" onclick="pendingAction(\'' + p.id + '\',\'' + prefix + '\',' + idx + ',\'approve\')">✓ 批准</button>' +
+    '<button class="btn-reject" onclick="pendingAction(\'' + p.id + '\',\'' + prefix + '\',' + idx + ',\'reject\')">✕ 拒絕</button></div>';
+  h += '<div class="review-pw-error" id="' + prefix + 'Err_' + idx + '"></div></div>';
+  return h;
+}
+
+function openReview(slotId, di, cellPendings, currentData) {
+  const date = getWeekDates(currentWeekOffset)[di];
+  document.getElementById('reviewTitle').textContent = '待審核｜' + dayLabel(date) + '・' + slotText(slotId);
+  let h = cellPendings.map((p, i) => pendingCardHTML(p, i, 'review', currentData)).join('');
+  h += '<button class="review-edit-link" onclick="closeReview();openEditDirect(\'' + slotId + '\',' + di + ')">忽略待審核，直接編輯此格</button>';
+  document.getElementById('reviewBody').innerHTML = h;
+  document.getElementById('reviewModal').classList.add('active');
+}
+function closeReview() { document.getElementById('reviewModal').classList.remove('active'); }
+
+/* 批准「所有週」的待審核前先保留過去的週 */
+function approvePendingWithFreeze(pendingId, approver) {
+  const p = pendingData.find(x => x.id === pendingId);
+  const pre = (p && p.scope === '所有週' && p.dateKey) ? freezePastWeeks(p.templateKey, p.dateKey, approver) : Promise.resolve();
+  return pre.then(() => apiPost({ action: 'approvePending', id: pendingId, approver: approver }));
+}
+
+function pendingAction(pendingId, prefix, idx, action) {
+  const pwInput = document.getElementById(prefix + 'Pw_' + idx), errEl = document.getElementById(prefix + 'Err_' + idx);
+  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  if (!pwInput.value) { fail('請輸入密碼'); return; }
+  adminByPassword(pwInput.value).then(approver => {
+    if (!approver) { fail('密碼錯誤'); pwInput.value = ''; return; }
+    errEl.style.display = 'none';
+    showToast(action === 'approve' ? '批准中...' : '拒絕中...');
+    const req = action === 'approve' ? approvePendingWithFreeze(pendingId, approver) : apiPost({ action: 'rejectPending', id: pendingId, approver: approver });
+    req.then(resp => {
+      if (!resp || !resp.success) throw new Error((resp && resp.error) || '');
+      pendingData = pendingData.filter(p => p.id !== pendingId);
+      writeCache();
+      if (prefix === 'review') closeReview(); else { updatePendingCount(); renderPendingList(); }
+      showToast(approver + (action === 'approve' ? ' 已批准' : ' 已拒絕'));
+      loadData();
+    }).catch(() => showToast('操作失敗，請按「同步」後再試'));
+  });
+}
+
+/* ─── 管理面板 ─── */
+function openHistoryAuth() {
+  document.getElementById('historyPwInput').value = '';
+  document.getElementById('historyPwError').style.display = 'none';
+  document.getElementById('historyAuthModal').classList.add('active');
+  setTimeout(() => document.getElementById('historyPwInput').focus(), 50);
+}
+function confirmHistoryAuth() {
+  adminByPassword(document.getElementById('historyPwInput').value).then(name => {
+    if (!name) { document.getElementById('historyPwError').style.display = 'block'; document.getElementById('historyPwInput').value = ''; return; }
+    document.getElementById('historyAuthModal').classList.remove('active');
+    document.getElementById('historyModal').classList.add('active');
+    updatePendingCount();
+    switchHistoryTab('pending');
+  });
+}
+function closeHistory() { document.getElementById('historyModal').classList.remove('active'); }
+function switchHistoryTab(tab) {
+  document.getElementById('tabPending').classList.toggle('active', tab === 'pending');
+  document.getElementById('tabLog').classList.toggle('active', tab === 'log');
+  if (tab === 'pending') renderPendingList(); else renderLogList();
+}
+function updatePendingCount() { document.getElementById('pendingCount').textContent = pendingData.length || ''; }
+
+function renderPendingList() {
+  const body = document.getElementById('historyBody');
+  body.innerHTML = pendingData.length ? pendingData.map((p, i) => pendingCardHTML(p, i, 'pending')).join('') : '<div class="log-empty">沒有待審核的修改</div>';
+}
+
+function renderLogList() {
+  const body = document.getElementById('historyBody');
+  body.innerHTML = '<div class="log-empty">載入中...</div>';
+  if (!API_URL) { body.innerHTML = '<div class="log-empty">尚未設定後端網址</div>'; return; }
+  apiPost({ action: 'readLog', limit: 80 })
+    .then(data => {
+      if (data.error) throw new Error(data.error);
+      const logs = data.logs || [];
+      if (!logs.length) { body.innerHTML = '<div class="log-empty">尚無修改記錄</div>'; return; }
+      const box = t => (!t || /^（.*）$/.test(t)) ? '<span style="color:var(--text-dim)">' + esc(t || '（無）') + '</span>' : esc(t);
+      body.innerHTML = logs.map(log => '<div class="log-item"><div class="log-meta">' +
+        '<span class="log-user">' + esc(log.user) + '</span>' +
+        '<span class="log-scope' + (String(log.scope).indexOf('所有週') >= 0 ? '' : ' this') + '">' + esc(log.scope) + '</span>' +
+        '<span class="log-key">' + esc(log.key) + '</span><span class="log-time">' + esc(log.time) + '</span></div>' +
+        '<div class="log-compare"><div class="log-box"><div class="log-box-title">修改前</div>' + box(log.oldData) + '</div>' +
+        '<div class="log-arrow">→</div><div class="log-box new"><div class="log-box-title">修改後</div>' + box(log.newData) + '</div></div></div>').join('');
+    })
+    .catch(() => { body.innerHTML = '<div class="log-empty">載入失敗</div>'; });
+}
+
+/* ─── 還原：清掉所有臨時調整與待審核（固定班表不動） ─── */
+function resetToDefault() {
+  const pw = prompt('還原會清除「所有臨時調整」與「待審核」，固定班表不動。\n請輸入主管密碼確認：');
+  if (!pw) return;
+  adminByPassword(pw).then(name => {
+    if (!name) { showToast('密碼錯誤'); return; }
+    apiPost({ action: 'resetAll', user: name })
+      .then(resp => { okOrThrow(resp); overrides = {}; pendingData = []; writeCache(); renderAll(); showToast('已清除所有臨時調整'); })
+      .catch(() => showToast('清除失敗，請重試'));
+  });
+}
+
+/* ─── 人員異動 ─── */
+function openStaffLeave() {
+  document.getElementById('slNameList').innerHTML = knownNames().map(n => '<option value="' + esc(n) + '">').join('');
+  document.getElementById('slName').value = '';
+  document.getElementById('slDate').value = dateStr(new Date());
+  document.getElementById('slPwInput').value = '';
+  document.getElementById('slError').style.display = 'none';
+  document.getElementById('staffLeaveModal').classList.add('active');
+  setTimeout(() => document.getElementById('slName').focus(), 50);
+}
+function closeStaffLeave() { document.getElementById('staffLeaveModal').classList.remove('active'); }
+function confirmStaffLeave() {
+  const name = document.getElementById('slName').value.trim(), eDate = document.getElementById('slDate').value;
+  const errEl = document.getElementById('slError');
+  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  if (!name) { fail('請輸入姓名'); return; }
+  if (!eDate) { fail('請選擇生效日'); return; }
+  adminByPassword(document.getElementById('slPwInput').value).then(matched => {
+    if (!matched) { fail('密碼錯誤'); document.getElementById('slPwInput').value = ''; return; }
+    closeStaffLeave();
+    showToast('處理中...');
+    apiPost({ action: 'removeStaffFromTemplate', name: name, effectiveDate: eDate, user: matched })
+      .then(resp => {
+        if (!resp || !resp.success) { showToast('設定失敗：' + ((resp && resp.error) || '未知錯誤')); return; }
+        if (!resp.count) { showToast(name + ' 目前沒有排在固定班表或未來臨時調整裡'); return; }
+        showToast('已設定 ' + name + ' 自 ' + eDate + ' 起不再排班（共調整 ' + resp.count + ' 格，之前週次已保留）');
+        loadData();
+      })
+      .catch(() => showToast('設定失敗，請重試'));
+  });
+}
+
+/* ─── 批量排班（整月月曆）───
+ * 編輯中的變更先放在 batchDraft（dateKey → 該格變更後的內容），按「儲存全部」才送出。
+ * 儲存時沿用身分視窗：輸入密碼 → 直接生效（saveOverridesBatch）；選員工名字 → 每格各一筆待審核（submitPendingBatch）。
+ * 跟固定班表相同的格子不存臨時調整、會刪掉原有的臨時調整；清空的格子存成空的臨時調整。 */
+let batchMonth = null, batchDraft = {}, batchClip = null, batchEditing = null;
+let batchMode = 'add', batchPick = { slots: {}, weekdays: { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 } };
+
+function batchEff(dk) { return (dk in batchDraft) ? batchDraft[dk] : currentOf(dk); }
+function batchNorm(d) { return JSON.stringify(people(d).map(p => ({ name: p.name, note: p.note || '' }))); }
+function batchSame(a, b) { return batchNorm(a) === batchNorm(b); }
+function batchSetDraft(dk, data) {
+  data = data || { people: [] };
+  if (batchSame(data, currentOf(dk))) delete batchDraft[dk]; else batchDraft[dk] = data;
+}
+
+function openBatch() {
+  const now = new Date();
+  batchMonth = new Date(now.getFullYear(), now.getMonth(), 1, 12);
+  batchDraft = {}; batchClip = null;
+  document.getElementById('batchModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  renderBatchTools();
+  batchSetMode('add');
+}
+
+function closeBatch(force) {
+  const n = Object.keys(batchDraft).length;
+  if (!force && n && !confirm('還有 ' + n + ' 格尚未儲存，確定要離開嗎？')) return;
+  document.getElementById('batchModal').classList.remove('active');
+  document.body.style.overflow = '';
+  batchDraft = {}; batchClip = null;
+}
+
+function batchChangeMonth(dir) { batchMonth = new Date(batchMonth.getFullYear(), batchMonth.getMonth() + dir, 1, 12); renderBatch(); }
+
+function batchSetMode(mode) {
+  batchMode = mode;
+  document.getElementById('btModeAdd').classList.toggle('active', mode === 'add');
+  document.getElementById('btModeEdit').classList.toggle('active', mode === 'edit');
+  document.getElementById('btAddPanel').style.display = mode === 'add' ? '' : 'none';
+  batchPickChanged();
+}
+
+function renderBatchTools() {
+  const names = knownNames();
+  document.getElementById('btNameList').innerHTML = names.map(n => '<option value="' + esc(n) + '">').join('');
+  document.getElementById('btNameChips').innerHTML = names.map(n =>
+    '<button class="bchip" data-name="' + esc(n) + '" style="' + ps(n) + '" onclick="batchPickName(this.dataset.name)">' + esc(n) + '</button>').join('');
+  document.getElementById('btSlots').innerHTML = TIME_SLOTS.map(s =>
+    '<button class="bt-opt" data-slot="' + s.id + '" onclick="batchPickSlot(\'' + s.id + '\')" title="' + s.label + '~' + s.time + '">' + pad2(s.hour) + '</button>').join('');
+  document.getElementById('btWeekdays').innerHTML = DAYS.map((d, i) =>
+    '<button class="bt-opt" data-wd="' + i + '" onclick="batchPickWeekday(' + i + ')">' + d + '</button>').join('');
+  const now = new Date();
+  document.getElementById('btFrom').value = dateStr(now);
+  document.getElementById('btTo').value = dateStr(new Date(now.getFullYear(), now.getMonth() + 1, 0, 12));
+}
+
+function batchPickName(name) { document.getElementById('btName').value = name; batchPickChanged(); }
+function batchPickSlot(id) { if (batchPick.slots[id]) delete batchPick.slots[id]; else batchPick.slots[id] = 1; batchPickChanged(); }
+// 一次選一段連續時段：from 點到 to 點（不含 to），0,0 = 清除
+function batchPickSlotRange(from, to) {
+  batchPick.slots = {};
+  TIME_SLOTS.forEach(s => { if (s.hour >= from && s.hour < to) batchPick.slots[s.id] = 1; });
+  batchPickChanged();
+}
+function batchPickWeekday(i) { if (batchPick.weekdays[i]) delete batchPick.weekdays[i]; else batchPick.weekdays[i] = 1; batchPickChanged(); }
+function batchPickName_() { return document.getElementById('btName').value.trim(); }
+function batchPickReady() { return batchMode === 'add' && batchPickName_() && Object.keys(batchPick.slots).length > 0; }
+
+function batchPickChanged() {
+  const name = batchPickName_();
+  document.querySelectorAll('#btNameChips .bchip').forEach(b => b.classList.toggle('active', b.dataset.name === name));
+  document.querySelectorAll('.bt-opt[data-slot]').forEach(b => b.classList.toggle('active', !!batchPick.slots[b.dataset.slot]));
+  document.querySelectorAll('.bt-opt[data-wd]').forEach(b => b.classList.toggle('active', !!batchPick.weekdays[b.dataset.wd]));
+  const tip = document.getElementById('btTip');
+  if (batchPickReady()) {
+    tip.className = 'bt-row bt-tip';
+    tip.textContent = '👉 點月曆上的日期，把「' + name + '」排進選的時段（再點一次取消）；或用上面的期間一次套用';
+  } else {
+    tip.className = 'bt-row bt-tip warn';
+    tip.textContent = !name ? '先選或輸入人員' : '再選至少一個時段';
+  }
+  if (batchMonth) renderBatch();
+}
+
+// 該天選定的時段裡，這個人是否都已排上
+function batchDayHasPick(ds) {
+  const name = batchPickName_(), slots = Object.keys(batchPick.slots);
+  if (!name || !slots.length) return false;
+  return slots.every(s => people(batchEff(ds + '_' + s)).some(p => p.name === name));
+}
+
+// 在某天選定的時段加入（或移除）選定的人；已在名單上的人加入時只更新備註
+function batchApplyDay(ds, remove) {
+  const name = batchPickName_(), note = document.getElementById('btNote').value.trim();
+  Object.keys(batchPick.slots).forEach(s => {
+    const dk = ds + '_' + s;
+    const list = clone(people(batchEff(dk))) || [];
+    const i = list.findIndex(p => p.name === name);
+    if (remove) { if (i >= 0) list.splice(i, 1); }
+    else if (i >= 0) list[i].note = note;
+    else list.push({ name: name, note: note });
+    batchSetDraft(dk, { people: list });
+  });
+}
+
+function batchApplyRange(remove) {
+  if (!batchPickName_()) { showToast('請先選人員'); return; }
+  if (!Object.keys(batchPick.slots).length) { showToast('請先選時段'); return; }
+  if (!Object.keys(batchPick.weekdays).length) { showToast('請至少勾一個星期'); return; }
+  const f = document.getElementById('btFrom').value, t = document.getElementById('btTo').value;
+  if (!f || !t) { showToast('請選開始和結束日期'); return; }
+  const from = parseDate(f), to = parseDate(t);
+  if (from > to) { showToast('開始日期不能晚於結束日期'); return; }
+  if ((to - from) / 86400000 > 120) { showToast('一次最多套用 120 天'); return; }
+  let count = 0;
+  for (const d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+    if (!batchPick.weekdays[dayIdx(d)]) continue;
+    batchApplyDay(dateStr(d), remove);
+    count++;
+  }
+  batchMonth = new Date(from.getFullYear(), from.getMonth(), 1, 12);
+  renderBatch();
+  showToast(!count ? '這段期間沒有勾選的星期' : (remove ? '已從 ' + count + ' 天移除' : '已加入 ' + count + ' 天') + '（尚未儲存）');
+}
+
+function batchDayClick(ev, ds) {
+  if (batchMode !== 'add' || ev.target.closest('.bday-tools')) return;
+  if (!batchPickReady()) { showToast(batchPickName_() ? '請先選時段' : '請先選人員'); return; }
+  batchApplyDay(ds, batchDayHasPick(ds));
+  renderBatch();
+}
+function batchSlotClick(dk) { if (batchMode === 'edit') openBatchSlot(dk); }
+
+function batchCellHTML(cd) {
+  const list = people(cd);
+  if (!list.length) return '<span class="bslot-empty">—</span>';
+  return list.map(p => '<span class="n" style="color:' + personColor(p.name).text + '">' + esc(p.name) + '</span>' + (p.note ? '<span class="nt">(' + esc(p.note) + ')</span>' : '')).join('、');
+}
+
+function renderBatch() {
+  const y = batchMonth.getFullYear(), m = batchMonth.getMonth();
+  document.getElementById('batchMonthLabel').textContent = y + ' 年 ' + (m + 1) + ' 月';
+  const today = dateStr(new Date());
+  let h = DAYS.map(d => '<div class="bcal-wd">週' + d + '</div>').join('');
+  const lead = dayIdx(new Date(y, m, 1, 12)), days = new Date(y, m + 1, 0).getDate();
+  for (let i = 0; i < lead; i++) h += '<div class="bday blank"></div>';
+  for (let d = 1; d <= days; d++) {
+    const date = new Date(y, m, d, 12), ds = dateStr(date);
+    const picked = batchMode === 'add' && batchDayHasPick(ds);
+    h += '<div class="bday' + (ds === today ? ' is-today' : '') + (picked ? ' has-pick' : '') + '" onclick="batchDayClick(event,\'' + ds + '\')">';
+    h += '<div class="bday-head"><span class="bday-date">' + (m + 1) + '/' + d + '</span><span class="bday-wd">週' + DAYS[dayIdx(date)] + '</span><span class="bday-tools">';
+    h += '<button onclick="batchCopyDay(\'' + ds + '\')">複製</button>';
+    if (batchClip && batchClip.from !== ds) h += '<button class="paste" onclick="batchPasteDay(\'' + ds + '\')">貼上</button>';
+    h += '</span></div>';
+    TIME_SLOTS.forEach(slot => {
+      const dk = ds + '_' + slot.id;
+      const cls = (dk in batchDraft) ? ' changed' : (overrides[dk] ? ' override' : '');
+      h += '<div class="bslot' + cls + '" onclick="batchSlotClick(\'' + dk + '\')"><span class="bslot-time">' + pad2(slot.hour) + '</span><span class="bslot-ppl">' + batchCellHTML(batchEff(dk)) + '</span></div>';
+    });
+    h += '</div>';
+  }
+  const cal = document.getElementById('batchCal');
+  cal.innerHTML = h;
+  cal.classList.toggle('add-mode', batchMode === 'add');
+  const n = Object.keys(batchDraft).length;
+  document.getElementById('batchCount').textContent = n ? n + ' 格待儲存' : '尚無變更';
+}
+
+function batchCopyDay(ds) {
+  batchClip = { from: ds, slots: {} };
+  TIME_SLOTS.forEach(s => { batchClip.slots[s.id] = clone(batchEff(ds + '_' + s.id)); });
+  renderBatch();
+  showToast('已複製 ' + dayLabel(parseDate(ds)) + '，到其他天按「貼上」');
+}
+function batchPasteDay(ds) {
+  if (!batchClip) return;
+  TIME_SLOTS.forEach(s => batchSetDraft(ds + '_' + s.id, clone(batchClip.slots[s.id])));
+  renderBatch();
+}
+
+function openBatchSlot(dk) {
+  batchEditing = dk;
+  const kp = keyParts(dk);
+  document.getElementById('batchEditTitle').textContent = dayLabel(kp.date) + '・' + slotText(kp.slot);
+  document.getElementById('batchEditBody').innerHTML = editorHTML('batch', batchEff(dk));
+  document.getElementById('batchEditModal').classList.add('active');
+}
+function closeBatchEdit() { document.getElementById('batchEditModal').classList.remove('active'); batchEditing = null; }
+function batchEditApply() { if (!batchEditing) return; batchSetDraft(batchEditing, { people: readRows('batch') }); closeBatchEdit(); renderBatch(); }
+function batchEditClear() { if (!batchEditing) return; batchSetDraft(batchEditing, { people: [] }); closeBatchEdit(); renderBatch(); }
+function batchEditRevert() {
+  if (!batchEditing) return;
+  const dk = batchEditing, tmpl = clone(scheduleData[keyParts(dk).tk]) || { people: [] };
+  // 已有臨時調整時，「用固定班表」要刪掉臨時調整，所以一定要放進草稿
+  if (overrides[dk]) batchDraft[dk] = tmpl; else delete batchDraft[dk];
+  closeBatchEdit(); renderBatch();
+}
+
+// 按「儲存全部」→ 跳出身分視窗（跳過範圍那步，批量一律是指定日期）
+function saveBatch() {
+  const n = Object.keys(batchDraft).length;
+  if (!n) { showToast('沒有需要儲存的變更'); return; }
+  window._batchSaving = true;
+  chooseSaveScope('this');
+  document.getElementById('scopeTitle').textContent = '儲存批量班表（' + n + ' 格）';
+  document.getElementById('scopeStepDesc').textContent = '確認身分：主管密碼直接生效，選員工則送審核';
+  document.getElementById('scopeBackBtn').style.display = 'none';
+  document.getElementById('saveScopeModal').classList.add('active');
+}
+
+function batchCommit(userName, isAdmin) {
+  const changes = Object.keys(batchDraft).sort().map(dk => {
+    const next = batchDraft[dk], kp = keyParts(dk), tmpl = scheduleData[kp.tk] || null;
+    const nextData = { people: people(next) };
+    return {
+      dateKey: dk,
+      templateKey: kp.tk,
+      // 直接生效時：跟固定班表一樣就刪掉臨時調整（null）；送審核時存實際內容，審核頁才看得懂
+      data: (isAdmin && tmpl && batchSame(nextData, tmpl)) ? null : nextData,
+      oldData: currentOf(dk),
+      newData: nextData
+    };
+  });
+  const btn = document.getElementById('batchSaveBtn');
+  btn.disabled = true; btn.textContent = isAdmin ? '儲存中...' : '提交中...';
+  apiPost({ action: isAdmin ? 'saveOverridesBatch' : 'submitPendingBatch', user: userName, changes: changes })
+    .then(resp => {
+      if (!resp || !resp.success) throw new Error((resp && resp.error) || '儲存失敗');
+      if (isAdmin) changes.forEach(c => { if (c.data) overrides[c.dateKey] = c.data; else delete overrides[c.dateKey]; });
+      else changes.forEach((c, i) => pendingData.push({ id: (resp.ids || [])[i], user: userName, scope: '僅這週', templateKey: c.templateKey, dateKey: c.dateKey, data: c.data, oldData: c.oldData }));
+      writeCache();
+      closeBatch(true);
+      renderAll();
+      showToast(isAdmin ? userName + ' 已儲存 ' + changes.length + ' 格班表' : userName + ' 已提交 ' + changes.length + ' 格，待主管審核');
+    })
+    .catch(e => { console.error('批量儲存失敗', e); showToast('儲存失敗，變更還在，請再按一次儲存'); })
+    .then(() => { btn.disabled = false; btn.textContent = '💾 儲存全部'; });
+}
+
+/* ─── 關閉視窗 ─── */
+[['editModal', closeModal], ['reviewModal', closeReview], ['saveScopeModal', closeScope], ['historyModal', closeHistory],
+ ['historyAuthModal', () => document.getElementById('historyAuthModal').classList.remove('active')], ['staffLeaveModal', closeStaffLeave], ['batchEditModal', closeBatchEdit], ['hourPickModal', closeHourPicker]]
+  .forEach(([id, fn]) => document.getElementById(id).addEventListener('click', function (e) { if (e.target === this) fn(); }));
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  closeBatchEdit(); closeModal(); closeReview(); closeScope(); closeHistory(); closeStaffLeave(); closeHourPicker();
+  document.getElementById('historyAuthModal').classList.remove('active');
+});
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, { position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: 'var(--text)', color: '#fff', padding: '10px 22px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', boxShadow: '0 4px 16px rgba(0,0,0,.15)', zIndex: '9999', animation: 'modalIn .2s ease', fontFamily: "'Noto Sans TC',sans-serif", maxWidth: '90vw', textAlign: 'center' });
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(() => t.remove(), 300); }, 3000);
+}
+
+init();
+</script>
+<!-- 意見回饋（共用 feedback-hub，題目在 hub 的 questions.js） -->
+<script src="https://feedback-hub.timelesspaperart003.workers.dev/widget.js" data-project="模型部排班表"></script>
+</body>
+</html>
