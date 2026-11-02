@@ -209,6 +209,9 @@
   .lr-dates .form-input { flex: 1; min-width: 0; }
   .lr-check { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 10px; cursor: pointer; }
   .order-chip { border-style: dashed; color: var(--text-muted); }
+  .diff-box { background: var(--primary-soft); border: 1px solid #c7d2fe; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  .diff-box b { width: 100%; font-size: 12px; color: var(--primary-text); }
+  .diff-add { color: #15803d; font-weight: 700; } .diff-del { color: #b91c1c; font-weight: 700; } .diff-note { color: var(--text-secondary); }
   .hist-tools { padding: 8px 22px 0; display: flex; justify-content: flex-end; }
   /* A／B 人員表 */
   .rs-scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
@@ -239,6 +242,21 @@
   .rs tfoot td, .rs tfoot th { background: var(--surface-2); font-size: 12px; color: var(--text-muted); text-align: center; height: 36px; cursor: default; }
   .rs tfoot th { text-align: left; }
   .rs tfoot td b { color: var(--text); font-size: 15px; }
+  /* 🎨 班別表 */
+  .sf-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 10px; font-size: 12px; }
+  .sf-key { display: inline-flex; align-items: center; gap: 6px; }
+  .sf-key small { color: var(--text-muted); }
+  .sf-code { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px; color: #fff; font-style: normal; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .sf-code.ovr-demo { background: #3b82f6; outline: 1.5px dashed #111827; outline-offset: 2px; }
+  .sf-who { font-weight: 600 !important; color: var(--text) !important; border-left: none !important; }
+  .sf-who i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
+  .sf-cell { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 3px; border-radius: 7px; background: color-mix(in srgb, var(--c) 14%, #fff); }
+  .sf-cell.calm { background: transparent; padding-left: 0; }
+  .sf-cell.calm .sf-t { color: var(--text-muted); font-weight: 500; }
+  .sf-cell.ovr { outline: 1.5px dashed #111827; outline-offset: 1px; }
+  .sf-t { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  .sf-sum { display: inline-block; margin: 0 5px; font-weight: 700; font-size: 12px; }
+  .sf-sum b { font-size: 14px; }
   /* C 橫向時間軸 */
   .hz { min-width: 900px; }
   .hz-hd { display: flex; background: var(--surface-2); border-bottom: 1px solid var(--border); }
@@ -423,6 +441,7 @@
     <button class="view-btn" data-v="roster" onclick="setView('roster')" title="A：人在左、日期在上，格子寫時間">👥 人員表</button>
     <button class="view-btn" data-v="rosterBar" onclick="setView('rosterBar')" title="B：人員表＋迷你時間條">📶 人員表＋時間條</button>
     <button class="view-btn" data-v="hz" onclick="setView('hz')" title="C：日期在左、時間在上">↔️ 橫向時間軸</button>
+    <button class="view-btn" data-v="shift" onclick="setView('shift')" title="顏色代表班別（早班／長班／午晚班／彈性），不是人名">🎨 班別表</button>
     <button class="view-btn" data-v="cards" onclick="setView('cards')">🗂️ 卡片</button>
     <button class="view-btn" data-v="leave" onclick="setView('leave')">🏖️ 請假</button>
   </div>
@@ -945,6 +964,25 @@ function sameList(a, b) {
   const k = d => JSON.stringify(people(d).map(p => p.name + '|' + (p.note || '')).sort());
   return k(a) === k(b);
 }
+// 這格跟固定班表的差異：[{ type: 'add'|'del'|'note', text }]；被拿掉的人如果那天有請假就註明
+function cellDiff(slotId, date) {
+  const c = getCell(slotId, date), out = [];
+  if (!c.isOverride) return out;
+  const ds = dateStr(date), o = people(c.data), t = people(tmplAt(c.templateKey, ds));
+  const nt = p => p.note ? '（' + p.note + '）' : '';
+  o.forEach(p => {
+    const q = t.find(x => x.name === p.name);
+    if (!q) out.push({ type: 'add', text: '＋' + p.name + nt(p) });
+    else if ((q.note || '') !== (p.note || '')) out.push({ type: 'note', text: '✎' + p.name + ' 備註：' + (q.note || '（無）') + ' → ' + (p.note || '（無）') });
+  });
+  t.forEach(q => {
+    if (o.some(p => p.name === q.name)) return;
+    const lv = leaves.find(l => l.name === q.name && l.from <= ds && ds <= l.to);
+    out.push({ type: 'del', text: '－' + q.name + (lv ? '（請假）' : '') });
+  });
+  return out;
+}
+function diffTitle(slotId, date) { return cellDiff(slotId, date).map(d => d.text).join('\n'); }
 function hourMark(date, slot) {
   const cell = getCell(slot.id, date);
   if (hasPending(cell.templateKey, cell.dateKey)) return 'pend';
@@ -965,6 +1003,7 @@ function renderView() {
   else if (viewMode === 'leave') h = renderLeaveView(dates);
   else if (viewMode === 'roster' || viewMode === 'rosterBar') h = renderRoster(dates, viewMode === 'rosterBar');
   else if (viewMode === 'hz') h = renderHz(dates);
+  else if (viewMode === 'shift') h = renderShift(dates);
   else if (isMobile()) {
     if (!mobileDayUserSelected) { const ti = dates.findIndex(isToday); mobileDay = ti >= 0 ? ti : 0; }
     h = '<div class="mobile-day-tabs">' + dates.map((date, i) =>
@@ -991,8 +1030,8 @@ function renderTimeline(dates, idxs) {
     h += '<div class="tl-col' + (isToday(date) ? ' today' : '') + '" style="height:' + total + 'px">';
     // 底層：每小時一格，點了就編輯那個小時
     TIME_SLOTS.forEach((slot, i) => {
-      const mk = hourMark(date, slot);
-      h += '<div class="tl-hr" style="top:' + i * HOUR_PX + 'px;height:' + HOUR_PX + 'px" title="' + dayLabel(date) + ' ' + slotText(slot.id) + '" onclick="openEdit(\'' + slot.id + '\',' + di + ')">' +
+      const mk = hourMark(date, slot), df = mk === 'ovr' ? '\n跟固定班表比：\n' + diffTitle(slot.id, date) : '';
+      h += '<div class="tl-hr" style="top:' + i * HOUR_PX + 'px;height:' + HOUR_PX + 'px" title="' + esc(dayLabel(date) + ' ' + slotText(slot.id) + df) + '" onclick="openEdit(\'' + slot.id + '\',' + di + ')">' +
         (mk ? '<i class="mk ' + mk + '"></i>' : '') + '</div>';
     });
     // 上層：人員色塊（右邊留 10px 給臨時調整／待審核的小圓點）
@@ -1074,6 +1113,16 @@ function changedPeople(date) {
   });
   return out;
 }
+// 臨時調整的人：提示「固定班原本是幾點」
+function tmplNote(name, date) {
+  const ds = dateStr(date), segs = []; let open = null;
+  TIME_SLOTS.forEach(slot => {
+    const has = people(tmplAt(slot.id + '-' + DAYS[dayIdx(date)], ds)).some(p => p.name === name);
+    if (!has) { open = null; return; }
+    if (open) open[1] = slot.hour + 1; else { open = [slot.hour, slot.hour + 1]; segs.push(open); }
+  });
+  return '臨時調整｜固定班：' + (segs.length ? segs.map(segTxt).join('、') : '這天沒有排');
+}
 function pendCount(date) { return TIME_SLOTS.filter(s => hourMark(date, s) === 'pend').length; }
 function segTxt(s) { return pad2(s[0]) + '–' + pad2(s[1]); }
 function leaveTag(l) { return '<span class="rs-leave' + (l.pending ? ' pending' : '') + '">🏖️ ' + (l.time === '全天' ? '請假' : esc(l.time)) + (l.pending ? '（審核中）' : '') + '</span>'; }
@@ -1097,7 +1146,7 @@ function renderRoster(dates, withBar) {
       const cls = (isToday(d) ? 'today' : '') + (r.segs.length ? '' : ' off');
       const click = r.segs.length ? 'openEdit(\'h' + pad2(r.segs[0][0]) + '\',' + di + ')' : 'openHourPicker(' + di + ')';
       let inner;
-      if (!r.segs.length) inner = lv ? leaveTag(lv) : '<span class="rs-none' + (ovr ? ' ovr' : '') + '"' + (ovr ? ' title="這天被臨時拿掉"' : '') + '>—</span>';
+      if (!r.segs.length) inner = lv ? leaveTag(lv) : '<span class="rs-none' + (ovr ? ' ovr' : '') + '">—</span>';
       else {
         count[di]++;
         const times = r.segs.map(s => '<span class="rs-t">' + segTxt(s) + '</span>').join('');
@@ -1107,7 +1156,7 @@ function renderRoster(dates, withBar) {
           (withBar ? '<span class="rs-mini">' + r.segs.map(s => '<i style="left:' + ((s[0] - FIRST_HOUR) / TIME_SLOTS.length * 100) + '%;width:' + ((s[1] - s[0]) / TIME_SLOTS.length * 100) + '%;background:' + c.border + '"></i>').join('') + '</span>' : '') +
           (lv ? leaveTag(lv) : '');
       }
-      h += '<td class="' + cls + '" onclick="' + click + '">' + inner + '</td>';
+      h += '<td class="' + cls + '" onclick="' + click + '"' + (ovr ? ' title="' + esc(tmplNote(n, d)) + '"' : '') + '>' + inner + '</td>';
     });
     h += '</tr>';
   });
@@ -1142,7 +1191,7 @@ function renderHz(dates) {
         h += '<div class="hz-bar leave" style="left:' + ((a - FIRST_HOUR) / N * 100) + '%;width:' + (Math.max(b - a, 1.5) / N * 100) + '%">' + leaveTag(x.lv) + '<b>' + esc(x.n) + '</b></div>';
       }
       x.r.segs.forEach(s => {
-        h += '<div class="hz-bar' + (changed[x.n] ? ' ovr' : '') + '" onclick="openEdit(\'h' + pad2(s[0]) + '\',' + di + ')" title="' + esc(x.n + ' ' + segTxt(s) + (x.r.notes.length ? '（' + x.r.notes.join('、') + '）' : '')) + '" ' +
+        h += '<div class="hz-bar' + (changed[x.n] ? ' ovr' : '') + '" onclick="openEdit(\'h' + pad2(s[0]) + '\',' + di + ')" title="' + esc(x.n + ' ' + segTxt(s) + (x.r.notes.length ? '（' + x.r.notes.join('、') + '）' : '') + (changed[x.n] ? '\n' + tmplNote(x.n, d) : '')) + '" ' +
           'style="left:' + ((s[0] - FIRST_HOUR) / N * 100) + '%;width:' + ((s[1] - s[0]) / N * 100) + '%;border-left-color:' + c.border + ';color:' + c.text + '">' +
           '<b>' + esc(x.n) + '</b><span class="t">' + segTxt(s) + '</span>' + (x.r.notes.length ? '<small>' + esc(x.r.notes.join('、')) + '</small>' : '') + (x.lv ? leaveTag(x.lv) : '') + '</div>';
       });
@@ -1151,6 +1200,48 @@ function renderHz(dates) {
     h += '</div></div>';
   });
   return h + '</div></div>';
+}
+
+/* ─── 🎨 班別表：顏色代表班別、不代表人。一般早班安靜顯示，特殊工時（長班／午晚班／彈性）才拉出小時間軸 ───
+ * 判斷用當天「最早上班～最晚下班」（中間休息不影響），由上往下找第一個符合的班別；要調規則改這裡 */
+const SHIFT_TYPES = [
+  { code: '早', name: '早班', rule: '08–09 上班、16–18 下班', color: '#3b82f6', calm: true, test: (a, b) => a <= 9 && b >= 16 && b <= 18 },
+  { code: '長', name: '長班', rule: '一天 11 小時以上', color: '#8b5cf6', test: (a, b) => b - a >= 11 },
+  { code: '晚', name: '午晚班', rule: '12:00 以後才上班', color: '#f97316', test: a => a >= 12 },
+  { code: '彈', name: '彈性班', rule: '其他時間', color: '#10b981', test: () => true },
+];
+function shiftOf(segs) {
+  const a = segs[0][0], b = segs[segs.length - 1][1];
+  return SHIFT_TYPES.find(t => t.test(a, b));
+}
+function renderShift(dates) {
+  const names = knownNames(), info = dates.map(d => ({ changed: changedPeople(d), leaves: leavesOn(dateStr(d)), cnt: {} }));
+  let h = '<div class="sf-legend">' + SHIFT_TYPES.map(t => '<span class="sf-key"><i class="sf-code" style="background:' + t.color + '">' + t.code + '</i><b>' + t.name + '</b><small>' + t.rule + '</small></span>').join('') +
+    '<span class="sf-key"><i class="sf-code ovr-demo">早</i><small>虛線框＝臨時調整</small></span></div>';
+  h += '<div class="rs-scroll"><table class="rs sf"><thead><tr><th class="rs-who">人員</th>' + rosterHead(dates) + '</tr></thead><tbody>';
+  names.forEach(n => {
+    h += '<tr class="' + dimCls(n).trim() + '"><th class="rs-who sf-who"><i style="background:' + personColor(n).border + '"></i>' + esc(n) + '</th>';
+    dates.forEach((d, di) => {
+      const r = personDay(n, d), ovr = info[di].changed[n], lv = info[di].leaves.find(l => l.name === n);
+      const click = r.segs.length ? 'openEdit(\'h' + pad2(r.segs[0][0]) + '\',' + di + ')' : 'openHourPicker(' + di + ')';
+      let inner;
+      if (!r.segs.length) inner = lv ? leaveTag(lv) : '<span class="rs-none' + (ovr ? ' ovr' : '') + '">—</span>';
+      else {
+        const t = shiftOf(r.segs);
+        info[di].cnt[t.code] = (info[di].cnt[t.code] || 0) + 1;
+        const times = r.segs.map(segTxt).join(' ');
+        inner = '<span class="sf-cell' + (t.calm ? ' calm' : '') + (ovr ? ' ovr' : '') + '" style="--c:' + t.color + '"><i class="sf-code" style="background:' + t.color + '">' + t.code + '</i><span class="sf-t">' + times + '</span></span>' +
+          (r.notes.length ? '<span class="rs-note" title="' + esc(r.notes.join('、')) + '">' + esc(r.notes.join('、')) + '</span>' : '') +
+          (t.calm ? '' : '<span class="rs-mini">' + r.segs.map(s => '<i style="left:' + ((s[0] - FIRST_HOUR) / TIME_SLOTS.length * 100) + '%;width:' + ((s[1] - s[0]) / TIME_SLOTS.length * 100) + '%;background:' + t.color + '"></i>').join('') + '</span>') +
+          (lv ? leaveTag(lv) : '');
+      }
+      h += '<td class="' + (isToday(d) ? 'today' : '') + (r.segs.length ? '' : ' off') + '" onclick="' + click + '"' + (ovr ? ' title="' + esc(tmplNote(n, d)) + '"' : '') + '>' + inner + '</td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody><tfoot><tr><th class="rs-who">班別人數</th>' + info.map((x, i) => '<td class="' + (isToday(dates[i]) ? 'today' : '') + '">' +
+    (SHIFT_TYPES.filter(t => x.cnt[t.code]).map(t => '<span class="sf-sum" style="color:' + t.color + '">' + t.code + ' <b>' + x.cnt[t.code] + '</b></span>').join('') || '—') + '</td>').join('') + '</tr></tfoot></table></div>';
+  return h;
 }
 
 /* ─── 🏖️ 請假：這週每天誰請假（Connecteam＋網頁請假），今天放最前面另外列 ─── */
@@ -1377,7 +1468,9 @@ function openEditDirect(slotId, di) {
   const cell = getCell(slotId, date);
   editingCell = cell.templateKey; editingDateKey = cell.dateKey;
   document.getElementById('modalTitle').textContent = '編輯｜' + dayLabel(date) + '・' + slotText(slotId);
-  document.getElementById('modalBody').innerHTML = editorHTML('edit', cell.data);
+  const diff = cellDiff(slotId, date);
+  document.getElementById('modalBody').innerHTML = (diff.length ? '<div class="diff-box"><b>跟固定班表比，這格有臨時調整：</b>' +
+    diff.map(d => '<span class="diff-' + d.type + '">' + esc(d.text) + '</span>').join('') + '</div>' : '') + editorHTML('edit', cell.data);
   document.getElementById('editModal').classList.add('active');
 }
 
