@@ -414,15 +414,26 @@
 <div class="scope-overlay" id="staffLeaveModal">
   <div class="scope-modal">
     <div class="scope-title">👋 人員異動</div>
-    <div class="scope-desc">設定這個人從某天起不再排進固定班表，<b>之前的週次班表會保留原樣</b>，不會被回溯修改。</div>
+    <div class="history-tabs" style="margin:-4px -20px 12px">
+      <button class="history-tab active" id="slTabLeave" onclick="slSwitch('leave')">不再排班</button>
+      <button class="history-tab" id="slTabNote" onclick="slSwitch('note')">✏️ 修正備註</button>
+    </div>
+    <div class="scope-desc" id="slDescLeave">設定這個人從某天起不再排進固定班表，<b>之前的週次班表會保留原樣</b>，不會被回溯修改。</div>
+    <div class="scope-desc" id="slDescNote" style="display:none">把這個人某個備註<b>全部</b>改掉（固定班表＋所有日期的臨時調整），例如打錯字。新備註留空＝刪掉這個備註。</div>
     <div style="margin-bottom:10px">
       <label class="field-label">姓名</label>
-      <input type="text" class="form-input" id="slName" list="slNameList" placeholder="選擇或輸入姓名" autocomplete="off" style="width:100%">
+      <input type="text" class="form-input" id="slName" list="slNameList" placeholder="選擇或輸入姓名" autocomplete="off" style="width:100%" oninput="slFillNotes()">
       <datalist id="slNameList"></datalist>
     </div>
-    <div style="margin-bottom:12px">
+    <div id="slLeaveFields" style="margin-bottom:12px">
       <label class="field-label">生效日（含當天起不再排班）</label>
       <input type="date" class="form-input" id="slDate" style="width:100%">
+    </div>
+    <div id="slNoteFields" style="display:none;margin-bottom:12px;text-align:left">
+      <label class="field-label">要改的備註</label>
+      <select class="form-input" id="slOldNote" style="width:100%;margin-bottom:10px"></select>
+      <label class="field-label">改成</label>
+      <input type="text" class="form-input" id="slNewNote" placeholder="新備註（留空＝刪除備註）" autocomplete="off" style="width:100%">
     </div>
     <div class="scope-pw-row">
       <input type="password" class="scope-pw-input" id="slPwInput" placeholder="主管密碼" autocomplete="off" onkeydown="if(event.key==='Enter')confirmStaffLeave()">
@@ -539,18 +550,11 @@ const TIME_SLOTS = Array.from({ length: 14 }, (_, i) => {
 const PERSON_COLORS = {
   // '阿明': { bg: '#d6dde6', border: '#a8b5c4', text: '#4e6070' },
 };
-const AUTO_COLORS = [
-  { bg: '#d6dde6', border: '#a8b5c4', text: '#4e6070' },
-  { bg: '#d4e4da', border: '#a4c8b0', text: '#456856' },
-  { bg: '#e6d6e0', border: '#c8a4b8', text: '#6e4860' },
-  { bg: '#e6dcd0', border: '#ccb89c', text: '#6e5838' },
-  { bg: '#cce4dc', border: '#96c8b8', text: '#386858' },
-  { bg: '#e6d2d0', border: '#cca8a4', text: '#704240' },
-  { bg: '#dcd6ea', border: '#b4aad2', text: '#54487a' },
-  { bg: '#e8e2c8', border: '#cdc290', text: '#665a24' },
-  { bg: '#d0e2ea', border: '#98c0d2', text: '#365e70' },
-  { bg: '#ead6c8', border: '#d2ac94', text: '#74482e' },
-];
+// 自動配色：24 個色相用黃金角間隔排列（相鄰編號的顏色差很多），每人分到不重複的一個（見 rebuildColors）
+const AUTO_COLORS = Array.from({ length: 24 }, (_, i) => {
+  const h = Math.round(i * 137.508) % 360, s = i % 2 ? 42 : 55;
+  return { bg: 'hsl(' + h + ',' + s + '%,87%)', border: 'hsl(' + h + ',' + (s - 5) + '%,60%)', text: 'hsl(' + h + ',' + (s - 5) + '%,30%)' };
+});
 // 主管密碼不放在網頁裡：輸入的密碼雜湊後送到後端（Apps Script 的 ADMINS）驗證，新增／換密碼改後端
 // 系統開始使用那週的週一；「所有週」改固定班表時，從這天起的過去週次會被保留原樣
 const FREEZE_FROM = '2026-11-02';
@@ -578,6 +582,7 @@ function init() {
 }
 
 function renderAll() {
+  rebuildColors();
   updateWeekLabel(); renderView(); renderLegend(); updateTodayBtn();
 }
 
@@ -626,13 +631,21 @@ function sha256(msg) {
     .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
 }
 // 回傳主管名稱；密碼錯誤回傳 null（連不上後端會另外跳提示）
+// 後端驗證要 1～3 秒：期間顯示「驗證中」並把畫面上的確認鈕暫時停用，重複按 Enter／確認不會送兩次
+let authBusy = false;
 function adminByPassword(pw) {
   if (!pw) return Promise.resolve(null);
+  if (authBusy) return new Promise(() => {});
+  authBusy = true;
+  const btns = [...document.querySelectorAll('.scope-pw-confirm, .btn-approve, .btn-reject')];
+  btns.forEach(b => { b.disabled = true; b.dataset.label = b.textContent; if (b.classList.contains('scope-pw-confirm')) b.textContent = '驗證中…'; });
+  showToast('驗證密碼中...');
+  const done = v => { authBusy = false; btns.forEach(b => { b.disabled = false; if (b.dataset.label) b.textContent = b.dataset.label; }); return v; };
   return sha256(pw).then(hash => apiPost({ action: 'checkAdmin', auth: hash }).then(resp => {
     if (resp && resp.success) { adminAuth = hash; return resp.name; }
     if (resp && resp.error && resp.error !== 'unauthorized') showToast(resp.error);
     return null;
-  })).catch(() => { showToast('無法連線雲端，請稍後再試'); return null; });
+  })).catch(() => { showToast('無法連線雲端，請稍後再試'); return null; }).then(done);
 }
 
 /* ─── 日期工具（一律用當地日期組字串，不用 toISOString） ─── */
@@ -651,14 +664,32 @@ function getWeekDates(offset) {
 }
 function isToday(d) { return dateStr(d) === dateStr(new Date()); }
 
-/* 某天某時段實際顯示的內容：臨時調整優先，沒有就用固定班表 */
-function getCell(slotId, date) {
-  const dk = dateStr(date) + '_' + slotId;
-  if (overrides[dk]) return { data: overrides[dk], isOverride: true, dateKey: dk, templateKey: slotId + '-' + DAYS[dayIdx(date)] };
-  const tk = slotId + '-' + DAYS[dayIdx(date)];
-  return { data: scheduleData[tk] || null, isOverride: false, dateKey: dk, templateKey: tk };
+/* 固定班表裡每個人可以帶 from（開始日 yyyy-MM-dd）：早於開始日的日期不排這個人；沒有 from = 一直都有 */
+function tmplAt(tk, ds) {
+  const list = people(scheduleData[tk]).filter(p => !p.from || p.from <= ds).map(p => ({ name: p.name, note: p.note || '' }));
+  return list.length ? { people: list } : null;
 }
-function currentOf(dk) { return overrides[dk] || scheduleData[keyParts(dk).tk] || null; }
+/* 「所有週」存檔時把新名單合併回固定班表的 from：原本就在的人保留開始日（若從更早的日期加入就提前），
+ * 新加入的人從 fromDate 開始；開始日在 fromDate 之後、這天看不到的人原樣保留。後端 mergeTemplateFrom 同一套規則。 */
+function mergeTemplateFrom(newData, oldData, fromDate) {
+  const old = people(oldData), out = [];
+  people(newData).forEach(p => {
+    const o = old.find(x => x.name === p.name), n = { name: p.name, note: p.note || '' };
+    const from = o ? (!o.from ? '' : (o.from <= fromDate ? o.from : fromDate)) : fromDate;
+    if (from) n.from = from;
+    out.push(n);
+  });
+  old.forEach(o => { if (o.from && o.from > fromDate && !out.some(x => x.name === o.name)) out.push(clone(o)); });
+  return out.length ? { people: out } : null;
+}
+
+/* 某天某時段實際顯示的內容：臨時調整優先，沒有就用固定班表（只算開始日已到的人） */
+function getCell(slotId, date) {
+  const dk = dateStr(date) + '_' + slotId, tk = slotId + '-' + DAYS[dayIdx(date)];
+  if (overrides[dk]) return { data: overrides[dk], isOverride: true, dateKey: dk, templateKey: tk };
+  return { data: tmplAt(tk, dateStr(date)), isOverride: false, dateKey: dk, templateKey: tk };
+}
+function currentOf(dk) { return overrides[dk] || tmplAt(keyParts(dk).tk, dk.slice(0, 10)); }
 
 function updateWeekLabel() { const d = getWeekDates(currentWeekOffset), f = x => (x.getMonth() + 1) + '/' + x.getDate(); document.getElementById('weekLabel').textContent = d[0].getFullYear() + ' ' + f(d[0]) + ' — ' + f(d[6]); }
 function updateTodayBtn() { document.getElementById('btnToday').classList.toggle('is-current-week', currentWeekOffset === 0); }
@@ -666,11 +697,22 @@ function changeWeek(dir) { currentWeekOffset += dir; mobileDayUserSelected = fal
 function goToday() { if (currentWeekOffset === 0) return; currentWeekOffset = 0; mobileDayUserSelected = false; renderAll(); }
 
 /* ─── 人員顏色 ─── */
+// 每個人先照名字算一個「偏好色」，被別人用走就往下一個找空的，所以班表上的人顏色一定不重複；
+// 依名字排序分配，新增一個人時其他人的顏色大多不變
+let colorMap = {};
+function nameHash(name) { let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0; return h; }
+function rebuildColors() {
+  colorMap = {};
+  const used = {};
+  knownNames().filter(n => !PERSON_COLORS[n]).sort().forEach(n => {
+    let i = nameHash(n) % AUTO_COLORS.length;
+    for (let k = 0; k < AUTO_COLORS.length && used[i]; k++) i = (i + 1) % AUTO_COLORS.length;
+    used[i] = 1;
+    colorMap[n] = AUTO_COLORS[i];
+  });
+}
 function personColor(name) {
-  if (PERSON_COLORS[name]) return PERSON_COLORS[name];
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return AUTO_COLORS[h % AUTO_COLORS.length];
+  return PERSON_COLORS[name] || colorMap[name] || AUTO_COLORS[nameHash(name) % AUTO_COLORS.length];
 }
 function ps(name) { const c = personColor(name); return 'background:' + c.bg + ';border-color:' + c.border + ';color:' + c.text; }
 
@@ -809,7 +851,7 @@ function renderCards(dates) {
       const mks = [];
       for (let x = s.start; x < s.end; x++) { const m = hourMark(date, slotById('h' + pad2(x))); if (m && mks.indexOf(m) < 0) mks.push(m); }
       h += '<div class="card-row' + dimCls(s.name) + '" onclick="openEdit(\'h' + pad2(s.start) + '\',' + di + ')">' +
-        '<span class="av" style="background:' + c.bg + ';border-color:' + c.border + ';color:' + c.text + '">' + esc(s.name.slice(-1)) + '</span>' +
+        '<span class="av" style="background:' + c.bg + ';border-color:' + c.border + ';color:' + c.text + '">' + esc(Array.from(s.name)[0] || '') + '</span>' +
         '<span class="nm">' + esc(s.name) + (s.notes.length ? '<small>' + esc(s.notes.join('、')) + '</small>' : '') + '</span>' +
         '<span class="tm">' + segTime(s) + mks.map(m => '<i class="mk ' + m + '"></i>').join('') + '</span></div>';
     });
@@ -966,15 +1008,15 @@ function confirmAsStaff() {
  * 讓過去的週保持原樣。已有臨時調整的日期不動。 */
 function freezePastWeeks(templateKey, dateKey, user) {
   const kp = keyParts(dateKey);
-  const tmpl = scheduleData[templateKey] || null;
-  const frozen = tmpl ? clone(tmpl) : { people: [] };
   const d = parseDate(FREEZE_FROM);
   while (dayIdx(d) !== dayIdx(kp.date)) d.setDate(d.getDate() + 1);
   const changes = [];
   for (; dateStr(d) < dateStr(kp.date); d.setDate(d.getDate() + 7)) {
     const dk = dateStr(d) + '_' + kp.slot;
     if (overrides[dk]) continue;
-    changes.push({ dateKey: dk, templateKey: templateKey, data: clone(frozen), oldData: tmpl, newData: frozen });
+    // 每一週各自用「那一週看得到的」固定班表（開始日已到的人）
+    const frozen = tmplAt(templateKey, dateStr(d)) || { people: [] };
+    changes.push({ dateKey: dk, templateKey: templateKey, data: clone(frozen), oldData: frozen, newData: frozen });
   }
   if (!changes.length) return Promise.resolve();
   return apiPost({ action: 'saveOverridesBatch', user: user, silent: true, changes: changes }).then(resp => {
@@ -995,10 +1037,11 @@ function confirmSaveScope(scope, userName, isAdmin) {
     // 先保留過去的週，成功後才改固定班表
     freezePastWeeks(cellKey, dateKey, userName)
       .then(() => {
-        if (newData) scheduleData[cellKey] = newData; else delete scheduleData[cellKey];
+        const merged = mergeTemplateFrom(newData, scheduleData[cellKey], dateKey.slice(0, 10));
+        if (merged) scheduleData[cellKey] = merged; else delete scheduleData[cellKey];
         delete overrides[dateKey]; writeCache(); renderAll();
         return Promise.all([
-          apiPost({ action: 'saveTemplate', key: cellKey, data: newData, oldData: oldData, user: userName }),
+          apiPost({ action: 'saveTemplate', key: cellKey, data: newData, fromDate: dateKey.slice(0, 10), oldData: oldData, user: userName }),
           apiPost({ action: 'deleteOverride', dateKey: dateKey })
         ]);
       })
@@ -1166,11 +1209,40 @@ function openStaffLeave() {
   document.getElementById('slDate').value = dateStr(new Date());
   document.getElementById('slPwInput').value = '';
   document.getElementById('slError').style.display = 'none';
+  document.getElementById('slNewNote').value = '';
+  slSwitch('leave');
   document.getElementById('staffLeaveModal').classList.add('active');
   setTimeout(() => document.getElementById('slName').focus(), 50);
 }
 function closeStaffLeave() { document.getElementById('staffLeaveModal').classList.remove('active'); }
+
+let slMode = 'leave';
+function slSwitch(mode) {
+  slMode = mode;
+  const leave = mode === 'leave';
+  document.getElementById('slTabLeave').classList.toggle('active', leave);
+  document.getElementById('slTabNote').classList.toggle('active', !leave);
+  document.getElementById('slDescLeave').style.display = leave ? '' : 'none';
+  document.getElementById('slDescNote').style.display = leave ? 'none' : '';
+  document.getElementById('slLeaveFields').style.display = leave ? '' : 'none';
+  document.getElementById('slNoteFields').style.display = leave ? 'none' : '';
+  slFillNotes();
+}
+// 列出這個人目前用過的備註（固定班表＋臨時調整），附上出現幾格
+function slFillNotes() {
+  if (slMode !== 'note') return;
+  const name = document.getElementById('slName').value.trim(), count = {};
+  [scheduleData, overrides].forEach(src => Object.keys(src).forEach(k => people(src[k]).forEach(p => {
+    if (p.name === name && p.note) count[p.note] = (count[p.note] || 0) + 1;
+  })));
+  const notes = Object.keys(count);
+  document.getElementById('slOldNote').innerHTML = notes.length
+    ? notes.map(n => '<option value="' + esc(n) + '">' + esc(n) + '（' + count[n] + ' 格）</option>').join('')
+    : '<option value="">' + (name ? '這個人沒有備註' : '先選姓名') + '</option>';
+}
+
 function confirmStaffLeave() {
+  if (slMode === 'note') { confirmReplaceNote(); return; }
   const name = document.getElementById('slName').value.trim(), eDate = document.getElementById('slDate').value;
   const errEl = document.getElementById('slError');
   const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
@@ -1188,6 +1260,25 @@ function confirmStaffLeave() {
         loadData();
       })
       .catch(() => showToast('設定失敗，請重試'));
+  });
+}
+
+function confirmReplaceNote() {
+  const name = document.getElementById('slName').value.trim();
+  const oldNote = document.getElementById('slOldNote').value, newNote = document.getElementById('slNewNote').value.trim();
+  const errEl = document.getElementById('slError');
+  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  if (!name) { fail('請輸入姓名'); return; }
+  if (!oldNote) { fail('這個人沒有可修改的備註'); return; }
+  if (oldNote === newNote) { fail('新備註跟原本一樣'); return; }
+  adminByPassword(document.getElementById('slPwInput').value).then(matched => {
+    if (!matched) { fail('密碼錯誤'); document.getElementById('slPwInput').value = ''; return; }
+    closeStaffLeave();
+    showToast('修正中...');
+    apiPost({ action: 'replaceNote', name: name, oldNote: oldNote, newNote: newNote })
+      .then(okOrThrow)
+      .then(resp => { showToast('已把 ' + name + ' 的「' + oldNote + '」改成「' + (newNote || '（無備註）') + '」，共 ' + resp.count + ' 格'); loadData(); })
+      .catch(e => showToast('修正失敗：' + (e.message || '請重試')));
   });
 }
 
@@ -1394,7 +1485,7 @@ function batchEditApply() { if (!batchEditing) return; batchSetDraft(batchEditin
 function batchEditClear() { if (!batchEditing) return; batchSetDraft(batchEditing, { people: [] }); closeBatchEdit(); renderBatch(); }
 function batchEditRevert() {
   if (!batchEditing) return;
-  const dk = batchEditing, tmpl = clone(scheduleData[keyParts(dk).tk]) || { people: [] };
+  const dk = batchEditing, tmpl = tmplAt(keyParts(dk).tk, dk.slice(0, 10)) || { people: [] };
   // 已有臨時調整時，「用固定班表」要刪掉臨時調整，所以一定要放進草稿
   if (overrides[dk]) batchDraft[dk] = tmpl; else delete batchDraft[dk];
   closeBatchEdit(); renderBatch();
@@ -1456,7 +1547,7 @@ function saveBatch() {
 
 function batchCommit(userName, isAdmin) {
   const changes = Object.keys(batchDraft).sort().map(dk => {
-    const next = batchDraft[dk], kp = keyParts(dk), tmpl = scheduleData[kp.tk] || null;
+    const next = batchDraft[dk], kp = keyParts(dk), tmpl = tmplAt(kp.tk, dk.slice(0, 10));
     const nextData = { people: people(next) };
     return {
       dateKey: dk,
