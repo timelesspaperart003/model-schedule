@@ -209,8 +209,10 @@
   .lr-dates .form-input { flex: 1; min-width: 0; }
   .lr-check { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 10px; cursor: pointer; }
   .order-chip { border-style: dashed; color: var(--text-muted); }
+  .clear-chip { background: var(--primary-soft); border-color: #c7d2fe; color: var(--primary-text); font-weight: 600; }
   .diff-box { background: var(--primary-soft); border: 1px solid #c7d2fe; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
   .diff-box b { width: 100%; font-size: 12px; color: var(--primary-text); }
+  .diff-box b.diff-lv { font-size: 13px; color: #c2410c; }
   .diff-add { color: #15803d; font-weight: 700; } .diff-del { color: #b91c1c; font-weight: 700; } .diff-note { color: var(--text-secondary); }
   .hist-tools { padding: 8px 22px 0; display: flex; justify-content: flex-end; }
   /* A／B 人員表 */
@@ -457,7 +459,7 @@
       上方可切換版面（試用中）：「📊 時間軸」直向、「👥 人員表」一列一人、「📶 人員表＋時間條」多一條小時間條、「↔️ 橫向時間軸」日期在左時間在上、「🗂️ 卡片」、「🏖️ 請假」。點格子／色塊就能編輯那天；人員表的紫框＝跟固定班表不一樣（臨時調整）。<br>
       儲存時選「僅這週」只改那一天，選「這天之後的所有週」會改固定班表（之前的週次保留原樣）。要一次排一整段時間或很多天，用「🗓️ 批量排班」；每週固定的人員（例如每週一三五 08–12），用批量排班裡的「📌 固定班表（每週）」一次設定。<br>
       admin 用右上角 Google 登入後，修改直接生效；員工選自己的名字送出，會變成「待審核」，由 admin 在「📋 記錄」批准或拒絕。<br>
-      點上方人名可只看那個人的班；按「⇅ 排序」可調整人員順序。<br>
+      點上方人名可只看那些人的班（可多選，再點一次取消，按「✕ 全部」清除）；按「⇅ 排序」可調整人員順序。<br>
       要請假按「🙋 請假」送出申請，主管核准後會自動從班表拿掉（有在 Connecteam 的人，在 Connecteam 請假核准後也會自動處理）。
     </div>
   </div>
@@ -716,7 +718,7 @@ const FREEZE_FROM = '2026-11-02';
 let scheduleData = {}, overrides = {}, pendingData = [];
 let leaveReqs = [], settings = {};   // 待審核的請假申請；後端設定（order＝人員排序）
 let leaves = [];   // 「🏖️ 請假」檢視用：Connecteam＋網頁請假（已核准、待審核）
-let currentWeekOffset = 0, filterPerson = null;
+let currentWeekOffset = 0, filterPeople = {};   // 上方人名可多選：選了的人正常顯示，其他人變淡；都沒選＝全部正常
 let editingCell = null, editingDateKey = null;
 let mobileDay = 0, mobileDayUserSelected = false;
 const isMobile = () => window.innerWidth <= 768;
@@ -978,17 +980,18 @@ function cellDiff(slotId, date) {
   t.forEach(q => {
     if (o.some(p => p.name === q.name)) return;
     const lv = leaves.find(l => l.name === q.name && l.from <= ds && ds <= l.to);
-    out.push({ type: 'del', text: '－' + q.name + (lv ? '（請假）' : '') });
+    out.push({ type: 'del', text: '－' + q.name, leave: lv ? q.name : '' });
   });
   return out;
 }
-function diffTitle(slotId, date) { return cellDiff(slotId, date).map(d => d.text).join('\n'); }
+// 被拿掉的人裡有請假的 → '農請假'、'農、Gina請假'（放在標題那行）
+function diffLeaveText(diff) { const n = diff.filter(d => d.leave).map(d => d.leave); return n.length ? n.join('、') + '請假' : ''; }
 function hourMark(date, slot) {
   const cell = getCell(slot.id, date);
   if (hasPending(cell.templateKey, cell.dateKey)) return 'pend';
   return cell.isOverride && !sameList(cell.data, tmplAt(cell.templateKey, dateStr(date))) ? 'ovr' : '';
 }
-function dimCls(name) { return filterPerson && filterPerson !== name ? ' dimmed' : ''; }
+function dimCls(name) { return Object.keys(filterPeople).length && !filterPeople[name] ? ' dimmed' : ''; }
 
 /* ─── 畫面切換：時間軸／卡片（記在這台裝置） ─── */
 const VIEW_KEY = 'modelScheduleView';
@@ -1030,8 +1033,9 @@ function renderTimeline(dates, idxs) {
     h += '<div class="tl-col' + (isToday(date) ? ' today' : '') + '" style="height:' + total + 'px">';
     // 底層：每小時一格，點了就編輯那個小時
     TIME_SLOTS.forEach((slot, i) => {
-      const mk = hourMark(date, slot), df = mk === 'ovr' ? '\n跟固定班表比：\n' + diffTitle(slot.id, date) : '';
-      h += '<div class="tl-hr" style="top:' + i * HOUR_PX + 'px;height:' + HOUR_PX + 'px" title="' + esc(dayLabel(date) + ' ' + slotText(slot.id) + df) + '" onclick="openEdit(\'' + slot.id + '\',' + di + ')">' +
+      const mk = hourMark(date, slot), diff = mk === 'ovr' ? cellDiff(slot.id, date) : [], lvTxt = diffLeaveText(diff);
+      const tip = dayLabel(date) + ' ' + slotText(slot.id) + (lvTxt ? ' ' + lvTxt : '') + (diff.length ? '\n跟固定班表比：\n' + diff.map(d => d.text).join('\n') : '');
+      h += '<div class="tl-hr" style="top:' + i * HOUR_PX + 'px;height:' + HOUR_PX + 'px" title="' + esc(tip) + '" onclick="openEdit(\'' + slot.id + '\',' + di + ')">' +
         (mk ? '<i class="mk ' + mk + '"></i>' : '') + '</div>';
     });
     // 上層：人員色塊（右邊留 10px 給臨時調整／待審核的小圓點）
@@ -1318,7 +1322,9 @@ function renderLegend() {
   const names = knownNames();
   const el = document.getElementById('legendPeople');
   if (!names.length) { el.innerHTML = '<span class="hint">還沒有人排班，點任一格開始排</span>'; return; }
-  el.innerHTML = names.map(n => '<span class="person-chip' + (filterPerson === n ? ' active' : '') + '" data-name="' + esc(n) + '" onclick="toggleFilter(this.dataset.name)">' +
+  const nSel = Object.keys(filterPeople).length;
+  el.innerHTML = (nSel ? '<span class="person-chip clear-chip" onclick="clearFilter()" title="取消篩選，顯示全部">✕ 全部（已選 ' + nSel + '）</span>' : '') +
+    names.map(n => '<span class="person-chip' + (filterPeople[n] ? ' active' : '') + '" data-name="' + esc(n) + '" onclick="toggleFilter(this.dataset.name)">' +
     '<span class="dot" style="background:' + personColor(n).border + '"></span>' + esc(n) + '</span>').join('') +
     '<span class="person-chip order-chip admin-only" onclick="openOrder()" title="調整人員排列順序">⇅ 排序</span>';
 }
@@ -1419,7 +1425,8 @@ function leaveAction(id, idx, action) {
     }).catch(e => { fail(e.message || '操作失敗'); loadData().then(() => { updatePendingCount(); renderPendingList(); }); });
   });
 }
-function toggleFilter(name) { filterPerson = filterPerson === name ? null : name; renderLegend(); renderView(); }
+function toggleFilter(name) { if (filterPeople[name]) delete filterPeople[name]; else filterPeople[name] = 1; renderLegend(); renderView(); }
+function clearFilter() { filterPeople = {}; renderLegend(); renderView(); }
 
 /* ─── 單格編輯 ─── */
 function pRow(prefix, name, note) {
@@ -1469,7 +1476,8 @@ function openEditDirect(slotId, di) {
   editingCell = cell.templateKey; editingDateKey = cell.dateKey;
   document.getElementById('modalTitle').textContent = '編輯｜' + dayLabel(date) + '・' + slotText(slotId);
   const diff = cellDiff(slotId, date);
-  document.getElementById('modalBody').innerHTML = (diff.length ? '<div class="diff-box"><b>跟固定班表比，這格有臨時調整：</b>' +
+  const lvTxt = diffLeaveText(diff);
+  document.getElementById('modalBody').innerHTML = (diff.length ? '<div class="diff-box">' + (lvTxt ? '<b class="diff-lv">🏖️ ' + esc(lvTxt) + '</b>' : '') + '<b>跟固定班表比：</b>' +
     diff.map(d => '<span class="diff-' + d.type + '">' + esc(d.text) + '</span>').join('') + '</div>' : '') + editorHTML('edit', cell.data);
   document.getElementById('editModal').classList.add('active');
 }
