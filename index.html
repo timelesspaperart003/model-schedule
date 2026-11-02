@@ -340,7 +340,7 @@
     <div class="notes-title">📋 使用說明</div>
     <div class="notes-content">
       上方可切換「📊 時間軸」或「🗂️ 卡片」。時間軸點任一小時（或色塊上的那個小時）就能編輯；卡片點人員，或按「✎ 編輯」選時段。<br>
-      儲存時選「僅這週」只改那一天，選「這天之後的所有週」會改固定班表（之前的週次保留原樣）。要一次排一整段時間或很多天，用「🗓️ 批量排班」。<br>
+      儲存時選「僅這週」只改那一天，選「這天之後的所有週」會改固定班表（之前的週次保留原樣）。要一次排一整段時間或很多天，用「🗓️ 批量排班」；每週固定的人員（例如每週一三五 08–12），用批量排班裡的「📌 固定班表（每週）」一次設定。<br>
       主管輸入密碼直接生效；員工選自己的名字送出，會變成「待審核」，由主管在「📋 記錄」批准或拒絕。<br>
       點上方人名可只看那個人的班。
     </div>
@@ -385,11 +385,13 @@
         <input type="password" class="scope-pw-input" id="scopePwInput" placeholder="主管密碼（直接生效）" autocomplete="off" onkeydown="if(event.key==='Enter')confirmWithPassword()">
         <button class="scope-pw-confirm" onclick="confirmWithPassword()">確認</button>
       </div>
-      <div class="scope-divider"><span>或 員工選自己的名字（送審核）</span></div>
-      <div class="scope-name-btns" id="staffNameBtns"></div>
-      <div class="scope-pw-row" style="margin-top:8px;">
-        <input type="text" class="scope-pw-input" id="staffNameInput" placeholder="輸入其他姓名" autocomplete="off" onkeydown="if(event.key==='Enter')confirmAsStaff()">
-        <button class="scope-pw-confirm" onclick="confirmAsStaff()">提交</button>
+      <div id="scopeStaffArea">
+        <div class="scope-divider"><span>或 員工選自己的名字（送審核）</span></div>
+        <div class="scope-name-btns" id="staffNameBtns"></div>
+        <div class="scope-pw-row" style="margin-top:8px;">
+          <input type="text" class="scope-pw-input" id="staffNameInput" placeholder="輸入其他姓名" autocomplete="off" onkeydown="if(event.key==='Enter')confirmAsStaff()">
+          <button class="scope-pw-confirm" onclick="confirmAsStaff()">提交</button>
+        </div>
       </div>
       <div class="scope-pw-error" id="scopePwError" style="display:none;"></div>
       <button class="scope-btn-back" id="scopeBackBtn" onclick="backToStep1()">← 返回</button>
@@ -449,6 +451,7 @@
     <div class="bt-modes">
       <button class="bt-mode" id="btModeAdd" onclick="batchSetMode('add')">➕ 點日期加人</button>
       <button class="bt-mode" id="btModeEdit" onclick="batchSetMode('edit')">✏️ 逐格編輯</button>
+      <button class="bt-mode" id="btModeFixed" onclick="batchSetMode('fixed')">📌 固定班表（每週）</button>
     </div>
     <div id="btAddPanel">
       <div class="bt-row">
@@ -467,7 +470,15 @@
         <button class="bt-opt mini" onclick="batchPickSlotRange(18,22)">18–22</button>
         <button class="bt-opt mini" onclick="batchPickSlotRange(0,0)">清除</button>
       </div>
-      <div class="bt-row">
+      <div class="bt-row" id="btFixedRow">
+        <span class="bt-label">③ 每週</span>
+        <span id="btWeekdaysFixed" class="bt-chips"></span>
+        <span class="bt-label" style="margin-left:10px">生效日</span>
+        <input type="date" class="form-input bt-date" id="btEff">
+        <button class="btn btn-primary" onclick="batchApplyFixed(false)">📌 加入固定班</button>
+        <button class="btn" onclick="batchApplyFixed(true)">－ 從固定班移除</button>
+      </div>
+      <div class="bt-row" id="btRangeRow">
         <span class="bt-label">③ 期間</span>
         <input type="date" class="form-input bt-date" id="btFrom">
         <span>~</span>
@@ -581,9 +592,9 @@ function loadData() {
     scheduleData = cached.template; overrides = cached.overrides || {}; pendingData = cached.pending || [];
   }
   renderAll();
-  if (!API_URL) { showToast('尚未設定後端網址（API_URL）'); return; }
+  if (!API_URL) { showToast('尚未設定後端網址（API_URL）'); return Promise.resolve(); }
   showToast(cached ? '更新班表中...' : '載入班表中...');
-  fetch(API_URL + '?action=read')
+  return fetch(API_URL + '?action=read')
     .then(r => r.json())
     .then(data => {
       if (data.error || !data.template) throw new Error(data.error || '回傳格式錯誤');
@@ -904,7 +915,7 @@ function saveEdit() {
 
 /* ─── 儲存範圍＋身分 ─── */
 function showSaveScope() {
-  window._batchSaving = false;
+  window._batchSaving = false; window._fixedSaving = null;
   document.getElementById('scopeTitle').textContent = '儲存班表修改';
   document.getElementById('scopeStepDesc').textContent = '選擇修改範圍';
   document.getElementById('scopeBackBtn').style.display = '';
@@ -921,6 +932,7 @@ function chooseSaveScope(scope) {
   document.getElementById('scopePwInput').value = '';
   document.getElementById('staffNameInput').value = '';
   document.getElementById('scopePwError').style.display = 'none';
+  document.getElementById('scopeStaffArea').style.display = '';
   document.getElementById('staffNameBtns').innerHTML = knownNames(window._batchSaving ? [batchDraft] : []).map(n =>
     '<button class="scope-name-btn" data-name="' + esc(n) + '" onclick="confirmAsStaffName(this.dataset.name)">' + esc(n) + '</button>').join('');
   setTimeout(() => document.getElementById('scopePwInput').focus(), 50);
@@ -972,6 +984,7 @@ function freezePastWeeks(templateKey, dateKey, user) {
 }
 
 function confirmSaveScope(scope, userName, isAdmin) {
+  if (window._fixedSaving) { const f = window._fixedSaving; window._fixedSaving = null; if (isAdmin) fixedCommit(f, userName); return; }
   if (window._batchSaving) { window._batchSaving = false; batchCommit(userName, isAdmin); return; }
   const newData = window._pendingSave, cellKey = window._pendingSaveCell, dateKey = window._pendingSaveDateKey;
   const oldData = currentOf(dateKey);
@@ -1217,7 +1230,10 @@ function batchSetMode(mode) {
   batchMode = mode;
   document.getElementById('btModeAdd').classList.toggle('active', mode === 'add');
   document.getElementById('btModeEdit').classList.toggle('active', mode === 'edit');
-  document.getElementById('btAddPanel').style.display = mode === 'add' ? '' : 'none';
+  document.getElementById('btModeFixed').classList.toggle('active', mode === 'fixed');
+  document.getElementById('btAddPanel').style.display = mode === 'edit' ? 'none' : '';
+  document.getElementById('btRangeRow').style.display = mode === 'add' ? '' : 'none';
+  document.getElementById('btFixedRow').style.display = mode === 'fixed' ? '' : 'none';
   batchPickChanged();
 }
 
@@ -1228,9 +1244,11 @@ function renderBatchTools() {
     '<button class="bchip" data-name="' + esc(n) + '" style="' + ps(n) + '" onclick="batchPickName(this.dataset.name)">' + esc(n) + '</button>').join('');
   document.getElementById('btSlots').innerHTML = TIME_SLOTS.map(s =>
     '<button class="bt-opt" data-slot="' + s.id + '" onclick="batchPickSlot(\'' + s.id + '\')" title="' + s.label + '~' + s.time + '">' + pad2(s.hour) + '</button>').join('');
-  document.getElementById('btWeekdays').innerHTML = DAYS.map((d, i) =>
-    '<button class="bt-opt" data-wd="' + i + '" onclick="batchPickWeekday(' + i + ')">' + d + '</button>').join('');
+  const wd = DAYS.map((d, i) => '<button class="bt-opt" data-wd="' + i + '" onclick="batchPickWeekday(' + i + ')">' + d + '</button>').join('');
+  document.getElementById('btWeekdays').innerHTML = wd;
+  document.getElementById('btWeekdaysFixed').innerHTML = wd;
   const now = new Date();
+  document.getElementById('btEff').value = dateStr(now);
   document.getElementById('btFrom').value = dateStr(now);
   document.getElementById('btTo').value = dateStr(new Date(now.getFullYear(), now.getMonth() + 1, 0, 12));
 }
@@ -1253,7 +1271,12 @@ function batchPickChanged() {
   document.querySelectorAll('.bt-opt[data-slot]').forEach(b => b.classList.toggle('active', !!batchPick.slots[b.dataset.slot]));
   document.querySelectorAll('.bt-opt[data-wd]').forEach(b => b.classList.toggle('active', !!batchPick.weekdays[b.dataset.wd]));
   const tip = document.getElementById('btTip');
-  if (batchPickReady()) {
+  if (batchMode === 'fixed') {
+    const ready = name && Object.keys(batchPick.slots).length;
+    tip.className = 'bt-row bt-tip' + (ready ? '' : ' warn');
+    tip.textContent = !name ? '先選或輸入人員' : !ready ? '再選至少一個時段' :
+      '👉 勾好星期和生效日，按「📌 加入固定班」：從生效日起每週自動排上「' + name + '」，之前的週次不變（需主管密碼）';
+  } else if (batchPickReady()) {
     tip.className = 'bt-row bt-tip';
     tip.textContent = '👉 點月曆上的日期，把「' + name + '」排進選的時段（再點一次取消）；或用上面的期間一次套用';
   } else {
@@ -1377,10 +1400,52 @@ function batchEditRevert() {
   closeBatchEdit(); renderBatch();
 }
 
+/* ─── 📌 固定班表（每週）：一次把某人的幾個小時、幾個星期寫進固定班表 ───
+ * 實際要改哪些格子由後端（applyTemplateBatch）用最新資料計算，並在同一個 lock 裡：
+ * 生效日之前的週次用舊固定班表存成臨時調整（保留原樣）；生效日之後已有的臨時調整也一起加／移除這個人
+ * （加人時跳過刻意清空的日子，例如放假）。只限主管。 */
+function hourRanges(slotIds) {
+  const hs = slotIds.map(id => +id.slice(1)).sort((a, b) => a - b), out = [];
+  hs.forEach(h => { const last = out[out.length - 1]; if (last && last[1] === h) last[1] = h + 1; else out.push([h, h + 1]); });
+  return out.map(r => pad2(r[0]) + ':00–' + pad2(r[1]) + ':00').join('、');
+}
+
+function batchApplyFixed(remove) {
+  const name = batchPickName_(), slots = Object.keys(batchPick.slots).sort();
+  const wds = Object.keys(batchPick.weekdays).map(Number).sort();
+  const eff = document.getElementById('btEff').value;
+  if (!name) { showToast('請先選人員'); return; }
+  if (!slots.length) { showToast('請先選時段'); return; }
+  if (!wds.length) { showToast('請至少勾一個星期'); return; }
+  if (!eff) { showToast('請選生效日'); return; }
+  if (Object.keys(batchDraft).length) { showToast('月曆上還有尚未儲存的變更，請先「💾 儲存全部」或取消'); return; }
+  const summary = name + '｜每週' + wds.map(i => DAYS[i]).join('、') + '｜' + hourRanges(slots) + '｜' + eff + ' 起';
+  window._fixedSaving = { name: name, note: document.getElementById('btNote').value.trim(), slots: slots, days: wds.map(i => DAYS[i]), effectiveDate: eff, remove: remove, summary: summary };
+  window._batchSaving = false;
+  chooseSaveScope('all');
+  document.getElementById('scopeTitle').textContent = remove ? '從固定班表移除' : '加入固定班表';
+  document.getElementById('scopeStepDesc').textContent = summary + '（需主管密碼）';
+  document.getElementById('scopeStaffArea').style.display = 'none';
+  document.getElementById('scopeBackBtn').style.display = 'none';
+  document.getElementById('saveScopeModal').classList.add('active');
+}
+
+function fixedCommit(f, userName) {
+  showToast('寫入固定班表中...');
+  apiPost({ action: 'applyTemplateBatch', name: f.name, note: f.note, slots: f.slots, days: f.days, effectiveDate: f.effectiveDate, remove: f.remove })
+    .then(okOrThrow)
+    .then(resp => loadData().then(() => {
+      if (document.getElementById('batchModal').classList.contains('active')) { renderBatchTools(); batchPickChanged(); }
+      showToast(!resp.count ? '固定班表沒有需要變更的格子' : userName + ' 已' + (f.remove ? '移除' : '加入') + '固定班：' + f.summary);
+    }))
+    .catch(e => showToast('寫入失敗：' + (e.message || '請按「同步」後再試')));
+}
+
 // 按「儲存全部」→ 跳出身分視窗（跳過範圍那步，批量一律是指定日期）
 function saveBatch() {
   const n = Object.keys(batchDraft).length;
   if (!n) { showToast('沒有需要儲存的變更'); return; }
+  window._fixedSaving = null;
   window._batchSaving = true;
   chooseSaveScope('this');
   document.getElementById('scopeTitle').textContent = '儲存批量班表（' + n + ' 格）';
