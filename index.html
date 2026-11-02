@@ -468,7 +468,8 @@
 </div>
 <!-- 儲存範圍＋身分 -->
 <div class="scope-overlay" id="saveScopeModal">
-  <div class="scope-modal">
+  <div class="scope-modal" style="position:relative">
+    <button class="modal-close" style="position:absolute;top:10px;right:10px" onclick="closeScope()" title="取消">✕</button>
     <div class="scope-title" id="scopeTitle">儲存班表修改</div>
     <div class="scope-desc" id="scopeStepDesc">選擇修改範圍</div>
     <div id="scopeStep1">
@@ -2014,10 +2015,7 @@ function batchCommit(userName, isAdmin) {
     .then(() => { btn.disabled = false; btn.textContent = '💾 儲存全部'; });
 }
 
-/* ─── 關閉視窗 ─── */
-[['editModal', closeModal], ['reviewModal', closeReview], ['saveScopeModal', closeScope], ['historyModal', closeHistory],
- ['staffLeaveModal', closeStaffLeave], ['batchEditModal', closeBatchEdit], ['hourPickModal', closeHourPicker], ['leaveReqModal', closeLeaveReq], ['orderModal', closeOrder]]
-  .forEach(([id, fn]) => document.getElementById(id).addEventListener('click', function (e) { if (e.target === this) fn(); }));
+/* ─── 關閉視窗：點視窗外的空白處不會關（避免誤觸把填到一半的內容關掉），要按 ✕／取消，或按鍵盤 Esc ─── */
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   closeBatchEdit(); closeModal(); closeReview(); closeScope(); closeHistory(); closeStaffLeave(); closeHourPicker(); closeLeaveReq(); closeOrder();
