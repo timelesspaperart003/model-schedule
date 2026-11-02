@@ -10,21 +10,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #e3e7e4; --surface: #f1f3f1; --surface-2: #e7ebe8; --surface-3: #d8ddd9;
-    --border: #c6cdc8; --border-light: #b5beb8;
-    --text: #3f4844; --text-secondary: #5e6863; --text-muted: #87918c; --text-dim: #aeb7b2;
-    --primary: #5f8a7e; --primary-dark: #4f786c; --primary-soft: #d5e5df; --primary-text: #3d6458;
-    --cell-bg: #e6efeb;
-    --accent: #8a86b8; --success: #7fae8e; --danger: #c08078; --warn: #e0a43a;
-    --header-bg: linear-gradient(135deg, #5f8a7e 0%, #7d86ad 100%);
-    --shadow-xs: 0 1px 2px rgba(60,75,70,.06); --shadow-sm: 0 1px 4px rgba(60,75,70,.08);
-    --shadow-md: 0 4px 12px rgba(60,75,70,.10); --shadow-lg: 0 8px 28px rgba(60,75,70,.12);
+    /* C 白卡側條：淺灰底、白色卡片、深色頁首 */
+    --bg: #f3f4f6; --surface: #ffffff; --surface-2: #f9fafb; --surface-3: #e5e7eb;
+    --border: #e5e7eb; --border-light: #d1d5db;
+    --text: #111827; --text-secondary: #374151; --text-muted: #6b7280; --text-dim: #9ca3af;
+    --primary: #4f46e5; --primary-dark: #4338ca; --primary-soft: #eef2ff; --primary-text: #3730a3;
+    --cell-bg: #f5f7ff;
+    --accent: #6366f1; --success: #16a34a; --danger: #dc2626; --warn: #f59e0b;
+    --header-bg: #111827;
+    --shadow-xs: 0 1px 2px rgba(17,24,39,.05); --shadow-sm: 0 1px 3px rgba(17,24,39,.08);
+    --shadow-md: 0 4px 12px rgba(17,24,39,.08); --shadow-lg: 0 8px 24px rgba(17,24,39,.08);
     --radius: 12px; --radius-sm: 8px; --radius-xs: 5px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: auto; }
 
-  .app-header { background: var(--header-bg); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 4px 20px rgba(60,80,75,.18); position: sticky; top: 0; z-index: 100; flex-wrap: wrap; }
+  .app-header { background: var(--header-bg); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 2px 10px rgba(17,24,39,.25); position: sticky; top: 0; z-index: 100; flex-wrap: wrap; }
   .header-left { display: flex; align-items: center; gap: 14px; }
   .logo-icon { width: 42px; height: 42px; background: rgba(255,255,255,.2); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 22px; border: 1px solid rgba(255,255,255,.25); }
   .header-title { font-size: 21px; font-weight: 700; color: #fff; letter-spacing: -.3px; }
@@ -40,8 +41,9 @@
   .btn-today:hover { background: rgba(255,255,255,.38); }
   .btn-today.is-current-week { opacity: .35; cursor: default; pointer-events: none; }
 
-  .btn-header { padding: 7px 12px; border-radius: var(--radius-xs); border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.12); color: #fff; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-  .btn-header:hover { background: rgba(255,255,255,.22); }
+  .logo-icon, .week-nav, .btn-today { background: #1f2937 !important; border-color: #374151 !important; }
+  .btn-header { padding: 7px 12px; border-radius: var(--radius-xs); border: 1px solid #374151; background: #1f2937; color: #e5e7eb; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .btn-header:hover { background: #374151; color: #fff; }
   .btn { padding: 7px 14px; border-radius: var(--radius-xs); border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
   .btn:hover { background: var(--surface-3); }
   .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
@@ -77,12 +79,13 @@
   .tl-axis { position: relative; background: var(--surface-2); border-right: 2px solid var(--border); }
   .tl-axis span { position: absolute; left: 0; right: 4px; text-align: right; font-size: 10px; font-weight: 600; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; padding-top: 2px; }
   .tl-col { position: relative; border-right: 1px solid var(--border); }
-  .tl-col.today { background: #f6faf8; }
-  .tl-hr { position: absolute; left: 0; right: 0; border-bottom: 1px solid var(--surface-3); cursor: pointer; }
-  .tl-hr:hover { background: rgba(95,138,126,.08); }
+  .tl-col { background: var(--surface-2); }
+  .tl-col.today { background: #f5f7ff; }
+  .tl-hr { position: absolute; left: 0; right: 0; border-bottom: 1px solid #eceef1; cursor: pointer; }
+  .tl-hr:hover { background: rgba(79,70,229,.05); }
   .tl-hr .mk { position: absolute; right: 2px; top: 3px; width: 7px; height: 7px; }
-  .tl-bar { position: absolute; border-radius: 7px; border-left: 4px solid; padding: 3px 6px; font-size: 12px; line-height: 1.3; overflow: hidden; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.07); z-index: 1; }
-  .tl-bar:hover { filter: brightness(.96); }
+  .tl-bar { position: absolute; border-radius: 6px; border: none; border-left: 4px solid; background: #fff; padding: 3px 6px; font-size: 12px; line-height: 1.3; overflow: hidden; cursor: pointer; box-shadow: 0 1px 3px rgba(17,24,39,.14); z-index: 1; }
+  .tl-bar:hover { box-shadow: 0 3px 8px rgba(17,24,39,.18); }
   .tl-bar b { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tl-bar small { display: block; font-size: 10px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tl-bar small.t { font-family: 'JetBrains Mono', monospace; }
@@ -134,7 +137,7 @@
   .notes-content { font-size: 13px; line-height: 1.8; color: var(--text-muted); }
 
   /* ─── 視窗 ─── */
-  .modal-overlay, .scope-overlay { display: none; position: fixed; inset: 0; background: rgba(60,72,68,.3); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+  .modal-overlay, .scope-overlay { display: none; position: fixed; inset: 0; background: rgba(17,24,39,.35); backdrop-filter: blur(4px); align-items: center; justify-content: center; }
   .modal-overlay { z-index: 1000; } .scope-overlay { z-index: 1100; }
   .modal-overlay.active, .scope-overlay.active { display: flex; }
   .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 460px; max-width: 95vw; box-shadow: var(--shadow-lg); animation: modalIn .2s ease; }
@@ -149,7 +152,7 @@
   .form-section-title { font-size: 12px; font-weight: 700; letter-spacing: 1px; margin-bottom: 10px; color: var(--primary-text); }
   .form-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
   .form-input { flex: 1; padding: 8px 12px; border-radius: var(--radius-xs); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: inherit; font-size: 14px; min-width: 0; }
-  .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(95,138,126,.15); }
+  .form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
   .form-input::placeholder { color: var(--text-dim); }
   .form-input.note-input { flex: .8; font-size: 12px; }
   .btn-add-person { background: none; border: 1px dashed var(--border-light); color: var(--text-muted); padding: 6px 12px; border-radius: var(--radius-xs); cursor: pointer; font-size: 12px; font-family: inherit; }
@@ -206,6 +209,21 @@
   .lr-dates .form-input { flex: 1; min-width: 0; }
   .lr-check { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 10px; cursor: pointer; }
   .order-chip { border-style: dashed; color: var(--text-muted); }
+  /* 🏖️ 請假檢視 */
+  .lv-summary { display: flex; align-items: center; font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
+  .lv-summary b { font-size: 18px; color: var(--text); margin: 0 4px; }
+  .lv-today { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--primary); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 14px; box-shadow: var(--shadow-sm); }
+  .lv-today-hd { font-weight: 700; font-size: 15px; }
+  .lv-today-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-top: 10px; }
+  .lv-row { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 8px; align-items: center; padding: 7px 8px; margin-bottom: 6px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid; border-radius: 6px; box-shadow: var(--shadow-xs); }
+  .lv-row .av { grid-row: span 2; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+  .lv-row .nm { font-weight: 700; font-size: 14px; min-width: 0; }
+  .lv-row .nm small { font-weight: 400; font-size: 10px; color: var(--text-muted); margin-left: 6px; }
+  .lv-row .tm { font-size: 11.5px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
+  .lv-row.pending { border-style: dashed; border-left-style: solid; opacity: .85; }
+  .lv-row.dimmed { opacity: .15; }
+  .lv-today-list .lv-row { margin-bottom: 0; }
+  .card-hd .lv-badge { background: #f97316; }
   body:not(.is-admin) .admin-only { display: none !important; }
   .auth-box { display: flex; align-items: center; min-height: 32px; }
   .order-list { max-height: 50vh; overflow-y: auto; margin-bottom: 12px; text-align: left; }
@@ -263,11 +281,11 @@
   .batch-scroll { flex: 1; overflow: auto; padding: 14px 24px 40px; }
   .batch-cal { display: grid; grid-template-columns: repeat(7, minmax(140px, 1fr)); gap: 8px; min-width: 1020px; }
   .batch-cal.add-mode .bday:not(.blank) { cursor: copy; }
-  .batch-cal.add-mode .bday:not(.blank):hover { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(138,134,184,.35); }
+  .batch-cal.add-mode .bday:not(.blank):hover { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,.3); }
   .bcal-wd { text-align: center; font-size: 12px; font-weight: 600; color: var(--text-muted); }
   .bday { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; display: flex; flex-direction: column; }
   .bday.blank { background: transparent; border: none; }
-  .bday.is-today { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(138,134,184,.35); }
+  .bday.is-today { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,.3); }
   .bday.has-pick .bday-head { background: #e9e2f3; }
   .bday-head { display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
   .bday-date { font-weight: 700; font-size: 14px; font-family: 'JetBrains Mono', monospace; }
@@ -347,6 +365,7 @@
   <div class="view-toggle">
     <button class="view-btn" data-v="timeline" onclick="setView('timeline')">📊 時間軸</button>
     <button class="view-btn" data-v="cards" onclick="setView('cards')">🗂️ 卡片</button>
+    <button class="view-btn" data-v="leave" onclick="setView('leave')">🏖️ 請假</button>
   </div>
   <div class="legend-item"><i class="mk ovr"></i>臨時調整</div>
   <div class="legend-item"><i class="mk pend"></i>待審核</div>
@@ -597,19 +616,26 @@ const TIME_SLOTS = Array.from({ length: 14 }, (_, i) => {
   const h = 8 + i;
   return { id: 'h' + pad2(h), hour: h, label: pad2(h) + ':00', time: pad2(h + 1) + ':00' };
 });
+/* 配色（C 白卡側條）：每人一個主色 → border＝色條／圓點、text＝加深的名字色、bg＝淡底（頭像、標籤用） */
+function mkColor(hex) {
+  const n = parseInt(hex.slice(1), 16), dk = v => Math.round(v * .62);
+  return { bg: hex + '1f', border: hex, text: 'rgb(' + dk(n >> 16) + ',' + dk((n >> 8) & 255) + ',' + dk(n & 255) + ')' };
+}
+// 固定顏色（照選配色時的預覽）；新加入的人從 AUTO_COLORS 自動分配
 const PERSON_COLORS = {
-  // '阿明': { bg: '#d6dde6', border: '#a8b5c4', text: '#4e6070' },
+  '9M': '#ef4444', 'Eason': '#f97316', 'Gina': '#eab308', '芷瑜': '#22c55e', '芊逸': '#14b8a6', '農': '#06b6d4',
+  '安汝': '#3b82f6', '小河': '#6366f1', '鴨子': '#a855f7', '郁哈': '#ec4899', '阿刑': '#78716c',
 };
-// 自動配色：24 個色相用黃金角間隔排列（相鄰編號的顏色差很多），每人分到不重複的一個（見 rebuildColors）
-const AUTO_COLORS = Array.from({ length: 24 }, (_, i) => {
-  const h = Math.round(i * 137.508) % 360, s = i % 2 ? 42 : 55;
-  return { bg: 'hsl(' + h + ',' + s + '%,87%)', border: 'hsl(' + h + ',' + (s - 5) + '%,60%)', text: 'hsl(' + h + ',' + (s - 5) + '%,30%)' };
-});
+Object.keys(PERSON_COLORS).forEach(n => { PERSON_COLORS[n] = mkColor(PERSON_COLORS[n]); });
+// 自動配色：先用固定顏色沒用到的色，每人分到不重複的一個（見 rebuildColors）
+const AUTO_COLORS = ['#84cc16', '#0ea5e9', '#f43f5e', '#8b5cf6', '#10b981', '#d946ef', '#64748b', '#a16207', '#1e40af', '#be123c', '#0f766e', '#4d7c0f', '#9a3412']
+  .map(mkColor);
 // 系統開始使用那週的週一；「所有週」改固定班表時，從這天起的過去週次會被保留原樣
 const FREEZE_FROM = '2026-11-02';
 
 let scheduleData = {}, overrides = {}, pendingData = [];
 let leaveReqs = [], settings = {};   // 待審核的請假申請；後端設定（order＝人員排序）
+let leaves = [];   // 「🏖️ 請假」檢視用：Connecteam＋網頁請假（已核准、待審核）
 let currentWeekOffset = 0, filterPerson = null;
 let editingCell = null, editingDateKey = null;
 let mobileDay = 0, mobileDayUserSelected = false;
@@ -642,13 +668,13 @@ function renderAll() {
 /* 上次從雲端載入的班表存在瀏覽器，開頁先顯示它 */
 const CACHE_KEY = 'modelScheduleCache_v1';
 function readCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { return null; } }
-function writeCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ template: scheduleData, overrides: overrides, pending: pendingData, leaveReqs: leaveReqs, settings: settings })); } catch (e) {} }
+function writeCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ template: scheduleData, overrides: overrides, pending: pendingData, leaveReqs: leaveReqs, settings: settings, leaves: leaves })); } catch (e) {} }
 
 function loadData() {
   const cached = readCache();
   if (cached && cached.template) {
     scheduleData = cached.template; overrides = cached.overrides || {}; pendingData = cached.pending || [];
-    leaveReqs = cached.leaveReqs || []; settings = cached.settings || {};
+    leaveReqs = cached.leaveReqs || []; settings = cached.settings || {}; leaves = cached.leaves || [];
   }
   renderAll();
   if (!API_URL) { showToast('尚未設定後端網址（API_URL）'); return Promise.resolve(); }
@@ -658,7 +684,7 @@ function loadData() {
     .then(data => {
       if (data.error || !data.template) throw new Error(data.error || '回傳格式錯誤');
       scheduleData = data.template; overrides = data.overrides || {}; pendingData = data.pending || [];
-      leaveReqs = data.leaveRequests || []; settings = data.settings || {};
+      leaveReqs = data.leaveRequests || []; settings = data.settings || {}; leaves = data.leaves || [];
       writeCache();
       renderAll();
     })
@@ -869,6 +895,7 @@ function renderView() {
   document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.v === viewMode));
   let h;
   if (viewMode === 'cards') h = renderCards(dates);
+  else if (viewMode === 'leave') h = renderLeaveView(dates);
   else if (isMobile()) {
     if (!mobileDayUserSelected) { const ti = dates.findIndex(isToday); mobileDay = ti >= 0 ? ti : 0; }
     h = '<div class="mobile-day-tabs">' + dates.map((date, i) =>
@@ -907,7 +934,7 @@ function renderTimeline(dates, idxs) {
       h += '<div class="tl-bar' + (many ? ' compact' : '') + dimCls(s.name) + '" title="' + esc(tip) + '" onclick="timelineBarClick(event,' + di + ',' + s.start + ',' + s.end + ')" style="' +
         'top:' + ((s.start - FIRST_HOUR) * HOUR_PX + 2) + 'px;height:' + ((s.end - s.start) * HOUR_PX - 4) + 'px;' +
         'left:calc((100% - 12px) * ' + (s.lane / s.lanes).toFixed(4) + ' + 2px);width:calc((100% - 12px) * ' + (s.span / s.lanes).toFixed(4) + ' - 2px);' +
-        'background:' + c.bg + ';border-color:' + c.border + ';color:' + c.text + '">' +
+        'border-color:' + c.border + ';color:' + c.text + '">' +
         '<b>' + esc(s.name) + '</b>' + (many ? '' : '<small class="t">' + pad2(s.start) + '–' + pad2(s.end) + '</small>' + (s.notes.length ? '<small>' + esc(s.notes.join('、')) + '</small>' : '')) + '</div>';
     });
     if (isToday(date)) {
@@ -954,6 +981,42 @@ function renderCards(dates) {
   return h + '</div>';
 }
 
+/* ─── 🏖️ 請假：這週每天誰請假（Connecteam＋網頁請假），今天放最前面另外列 ─── */
+function leavesOn(ds) {
+  return leaves.filter(l => l.from <= ds && ds <= l.to).map(l => ({
+    name: l.name, source: l.source, pending: l.status === '待審核',
+    time: l.allDay ? '全天' : (l.from === ds ? l.start : '08:00') + '–' + (l.to === ds ? l.end : '22:00')
+  })).sort((a, b) => orderIdx(a.name) - orderIdx(b.name));
+}
+function leaveRowsHTML(list) {
+  return list.map(l => {
+    const c = personColor(l.name);
+    return '<div class="lv-row' + dimCls(l.name) + (l.pending ? ' pending' : '') + '" style="border-left-color:' + c.border + '">' +
+      '<span class="av" style="background:' + c.bg + ';color:' + c.text + '">' + esc(Array.from(l.name)[0] || '') + '</span>' +
+      '<span class="nm" style="color:' + c.text + '">' + esc(l.name) + '<small>' + (l.pending ? '⏳ 審核中' : l.source === 'Connecteam' ? 'Connecteam' : '網頁申請') + '</small></span>' +
+      '<span class="tm">' + esc(l.time) + '</span></div>';
+  }).join('');
+}
+function renderLeaveView(dates) {
+  const weekCount = dates.reduce((n, d) => n + leavesOn(dateStr(d)).length, 0);
+  const ti = dates.findIndex(isToday);
+  let h = '<div class="lv-summary">本週共 <b>' + weekCount + '</b> 人次請假' +
+    '<button class="card-edit" onclick="openLeaveReq()" style="margin-left:12px">🙋 我要請假</button></div>';
+  if (ti >= 0) {
+    const today = leavesOn(dateStr(dates[ti]));
+    h += '<div class="lv-today"><div class="lv-today-hd">今天 ' + dayLabel(dates[ti]) + '　' + (today.length ? today.length + ' 人請假' : '沒有人請假') + '</div>' +
+      (today.length ? '<div class="lv-today-list">' + leaveRowsHTML(today) + '</div>' : '') + '</div>';
+  }
+  h += '<div class="cards">';
+  dates.forEach((date, di) => {
+    const list = leavesOn(dateStr(date));
+    h += '<div class="card' + (isToday(date) ? ' today' : '') + '"><div class="card-hd"><b>週' + DAYS[di] + '</b><small>' + (date.getMonth() + 1) + '/' + date.getDate() + '</small>' +
+      (isToday(date) ? '<em>今天</em>' : '') + (list.length ? '<span class="badge lv-badge">' + list.length + ' 人</span>' : '') + '</div>' +
+      (list.length ? leaveRowsHTML(list) : '<div class="card-none" style="cursor:default">沒有人請假</div>') + '</div>';
+  });
+  return h + '</div>';
+}
+
 // 卡片的「✎ 編輯」：列出這天每個小時，選一個進去編輯
 function openHourPicker(di) {
   const date = getWeekDates(currentWeekOffset)[di];
@@ -981,7 +1044,6 @@ function orderIdx(name) { return name in rankMap ? rankMap[name] : 9999; }
 /* ─── 人員篩選 ─── */
 function knownNames(extra) {
   const set = {};
-  Object.keys(PERSON_COLORS).forEach(n => { set[n] = 1; });
   [scheduleData, overrides].concat(extra || []).forEach(src => {
     Object.keys(src).forEach(k => people(src[k]).forEach(p => { if (p.name) set[p.name] = 1; }));
   });
@@ -1062,7 +1124,8 @@ function submitLeaveReq() {
   const btn = document.getElementById('lrSubmit'); btn.disabled = true; btn.textContent = '送出中…';
   apiPost(body).then(okOrThrow).then(resp => {
     leaveReqs.push({ id: resp.id, name: body.name, from: body.from, to: body.to, startHour: allDay ? null : body.startHour, endHour: allDay ? null : body.endHour, reason: body.reason, status: '待審核' });
-    writeCache(); closeLeaveReq(); showToast('已送出請假申請，等主管核准');
+    leaves.push({ name: body.name, from: body.from, to: body.to, allDay: allDay, start: allDay ? '' : pad2(body.startHour) + ':00', end: allDay ? '' : pad2(body.endHour) + ':00', source: '網頁', status: '待審核' });
+    writeCache(); closeLeaveReq(); renderView(); showToast('已送出請假申請，等主管核准');
   }).catch(e => fail('送出失敗：' + (e.message || '請稍後再試'))).then(() => { leaveSending = false; btn.disabled = false; btn.textContent = '送出申請'; });
 }
 
