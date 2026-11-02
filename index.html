@@ -198,6 +198,20 @@
   .log-time { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-left: auto; }
   .log-scope { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 3px; color: var(--primary-text); background: var(--cell-bg); border: 1px solid var(--primary-soft); }
   .log-scope.this { color: #6a5a8a; background: #efeaf5; border-color: #d6cce6; }
+  .log-scope.leave { color: #8a5a2a; background: #fbefdc; border-color: #ecd2a8; }
+  .leave-range { font-size: 14px; font-weight: 600; margin: 8px 0 4px; }
+  .leave-reason { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+  .leave-hint { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
+  .lr-dates { display: flex; gap: 6px; align-items: center; margin-bottom: 10px; }
+  .lr-dates .form-input { flex: 1; min-width: 0; }
+  .lr-check { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 10px; cursor: pointer; }
+  .order-chip { border-style: dashed; color: var(--text-muted); }
+  .order-list { max-height: 50vh; overflow-y: auto; margin-bottom: 12px; text-align: left; }
+  .order-row { display: flex; align-items: center; gap: 8px; padding: 5px 4px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .order-row .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .order-row .nm { flex: 1; }
+  .order-row button { border: 1px solid var(--border); background: var(--surface-2); border-radius: 6px; width: 30px; height: 26px; cursor: pointer; font-size: 11px; }
+  .order-row button:disabled { opacity: .3; cursor: default; }
   .log-key { font-size: 12px; font-weight: 600; background: var(--surface-2); padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border); }
   .log-compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
   .log-box { padding: 8px 10px; border-radius: var(--radius-xs); border: 1px solid var(--border); font-size: 12px; line-height: 1.6; background: var(--surface); }
@@ -319,6 +333,7 @@
     </div>
     <button class="btn-header" onclick="loadData()" title="重新載入雲端資料">⟳ 同步</button>
     <button class="btn-header" onclick="openBatch()" title="在月曆上一次排多天的班">🗓️ 批量排班</button>
+    <button class="btn-header" onclick="openLeaveReq()" title="申請請假，主管核准後自動從班表拿掉">🙋 請假</button>
     <button class="btn-header" onclick="openStaffLeave()" title="設定人員從某天起不再排班，之前的班表不受影響">👋 人員異動</button>
     <button class="btn-header" onclick="openHistoryAuth()" title="待審核與修改記錄">📋 記錄</button>
     <button class="btn-header" onclick="resetToDefault()" title="清除所有臨時調整與待審核">↺ 還原</button>
@@ -342,7 +357,8 @@
       上方可切換「📊 時間軸」或「🗂️ 卡片」。時間軸點任一小時（或色塊上的那個小時）就能編輯；卡片點人員，或按「✎ 編輯」選時段。<br>
       儲存時選「僅這週」只改那一天，選「這天之後的所有週」會改固定班表（之前的週次保留原樣）。要一次排一整段時間或很多天，用「🗓️ 批量排班」；每週固定的人員（例如每週一三五 08–12），用批量排班裡的「📌 固定班表（每週）」一次設定。<br>
       主管輸入密碼直接生效；員工選自己的名字送出，會變成「待審核」，由主管在「📋 記錄」批准或拒絕。<br>
-      點上方人名可只看那個人的班。
+      點上方人名可只看那個人的班；按「⇅ 排序」可調整人員順序。<br>
+      要請假按「🙋 請假」送出申請，主管核准後會自動從班表拿掉（有在 Connecteam 的人，在 Connecteam 請假核准後也會自動處理）。
     </div>
   </div>
 </div>
@@ -441,6 +457,47 @@
     </div>
     <div class="scope-pw-error" id="slError" style="display:none;"></div>
     <button class="scope-btn-back" onclick="closeStaffLeave()">← 取消</button>
+  </div>
+</div>
+<!-- 請假申請 -->
+<div class="scope-overlay" id="leaveReqModal">
+  <div class="scope-modal" style="text-align:left">
+    <div class="scope-title">🙋 請假申請</div>
+    <div class="scope-desc">送出後會通知主管，<b>核准後自動從班表拿掉</b>這段時間的班。</div>
+    <label class="field-label">姓名</label>
+    <input type="text" class="form-input" id="lrName" list="lrNameList" placeholder="選擇或輸入姓名" autocomplete="off" style="width:100%;margin-bottom:10px">
+    <datalist id="lrNameList"></datalist>
+    <label class="field-label">日期</label>
+    <div class="lr-dates">
+      <input type="date" class="form-input" id="lrFrom" onchange="lrFromChanged()">
+      <span>~</span>
+      <input type="date" class="form-input" id="lrTo">
+    </div>
+    <label class="lr-check"><input type="checkbox" id="lrAllDay" checked onchange="lrToggleHours()"> 全天</label>
+    <div class="lr-dates" id="lrHours" style="display:none">
+      <select class="form-input" id="lrStart"></select>
+      <span>~</span>
+      <select class="form-input" id="lrEnd"></select>
+    </div>
+    <label class="field-label">原因（選填）</label>
+    <input type="text" class="form-input" id="lrReason" placeholder="例：家裡有事" autocomplete="off" maxlength="200" style="width:100%;margin-bottom:12px" onkeydown="if(event.key==='Enter')submitLeaveReq()">
+    <button class="scope-pw-confirm" id="lrSubmit" style="width:100%" onclick="submitLeaveReq()">送出申請</button>
+    <div class="scope-pw-error" id="lrError" style="display:none;"></div>
+    <button class="scope-btn-back" onclick="closeLeaveReq()">← 取消</button>
+  </div>
+</div>
+<!-- 人員排序 -->
+<div class="scope-overlay" id="orderModal">
+  <div class="scope-modal">
+    <div class="scope-title">⇅ 人員排序</div>
+    <div class="scope-desc">用 ▲▼ 調整順序。時間軸由左到右、卡片由上到下、上方人名都照這個順序。</div>
+    <div class="order-list" id="orderList"></div>
+    <div class="scope-pw-row">
+      <input type="password" class="scope-pw-input" id="orderPwInput" placeholder="主管密碼" autocomplete="off" onkeydown="if(event.key==='Enter')confirmOrder()">
+      <button class="scope-pw-confirm" onclick="confirmOrder()">儲存</button>
+    </div>
+    <div class="scope-pw-error" id="orderError" style="display:none;"></div>
+    <button class="scope-btn-back" onclick="closeOrder()">← 取消</button>
   </div>
 </div>
 <!-- 批量排班（整月月曆） -->
@@ -560,6 +617,7 @@ const AUTO_COLORS = Array.from({ length: 24 }, (_, i) => {
 const FREEZE_FROM = '2026-11-02';
 
 let scheduleData = {}, overrides = {}, pendingData = [];
+let leaveReqs = [], settings = {};   // 待審核的請假申請；後端設定（order＝人員排序）
 let currentWeekOffset = 0, filterPerson = null;
 let editingCell = null, editingDateKey = null;
 let mobileDay = 0, mobileDayUserSelected = false;
@@ -589,12 +647,13 @@ function renderAll() {
 /* 上次從雲端載入的班表存在瀏覽器，開頁先顯示它 */
 const CACHE_KEY = 'modelScheduleCache_v1';
 function readCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { return null; } }
-function writeCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ template: scheduleData, overrides: overrides, pending: pendingData })); } catch (e) {} }
+function writeCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ template: scheduleData, overrides: overrides, pending: pendingData, leaveReqs: leaveReqs, settings: settings })); } catch (e) {} }
 
 function loadData() {
   const cached = readCache();
   if (cached && cached.template) {
     scheduleData = cached.template; overrides = cached.overrides || {}; pendingData = cached.pending || [];
+    leaveReqs = cached.leaveReqs || []; settings = cached.settings || {};
   }
   renderAll();
   if (!API_URL) { showToast('尚未設定後端網址（API_URL）'); return Promise.resolve(); }
@@ -604,6 +663,7 @@ function loadData() {
     .then(data => {
       if (data.error || !data.template) throw new Error(data.error || '回傳格式錯誤');
       scheduleData = data.template; overrides = data.overrides || {}; pendingData = data.pending || [];
+      leaveReqs = data.leaveRequests || []; settings = data.settings || {};
       writeCache();
       renderAll();
     })
@@ -733,25 +793,28 @@ function daySegments(date) {
 }
 
 // 時間重疊的色塊才分欄：先把彼此重疊的時段分成一群，每群各自算要幾欄（沒重疊的色塊佔滿整欄）
+// 群內照「人員排序」由左到右放：排前面的人先挑最左邊、時間沒衝突的欄
 function layoutLanes(segs) {
   const sorted = segs.slice().sort((a, b) => a.start - b.start || b.end - a.end);
-  let group = [], lanes = [], groupEnd = -1;
-  // 每個色塊再往右延伸，佔掉右邊同時段沒人用的欄位（不會被擠成一小條）
+  const hit = (a, b) => a.start < b.end && b.start < a.end;
+  let group = [], groupEnd = -1;
   const flush = () => {
+    const lanes = [];
+    group.slice().sort((a, b) => orderIdx(a.name) - orderIdx(b.name) || a.start - b.start).forEach(s => {
+      let l = lanes.findIndex(L => !L.some(o => hit(o, s)));
+      if (l < 0) { l = lanes.length; lanes.push([]); }
+      lanes[l].push(s); s.lane = l;
+    });
+    // 每個色塊再往右延伸，佔掉右邊同時段沒人用的欄位（不會被擠成一小條）
     group.forEach(s => {
       s.lanes = lanes.length; s.span = 1;
-      for (let k = s.lane + 1; k < lanes.length; k++) {
-        if (group.some(o => o.lane === k && o.start < s.end && s.start < o.end)) break;
-        s.span++;
-      }
+      for (let k = s.lane + 1; k < lanes.length && !lanes[k].some(o => hit(o, s)); k++) s.span++;
     });
-    group = []; lanes = [];
+    group = [];
   };
   sorted.forEach(s => {
     if (s.start >= groupEnd) flush();
-    let l = lanes.findIndex(end => end <= s.start);
-    if (l < 0) { l = lanes.length; lanes.push(0); }
-    lanes[l] = s.end; s.lane = l; group.push(s);
+    group.push(s);
     groupEnd = Math.max(groupEnd, s.end);
   });
   flush();
@@ -837,7 +900,7 @@ function renderCards(dates) {
   const span = TIME_SLOTS.length;
   let h = '<div class="cards">';
   dates.forEach((date, di) => {
-    const segs = daySegments(date).sort((a, b) => a.start - b.start || a.end - b.end);
+    const segs = daySegments(date).sort((a, b) => orderIdx(a.name) - orderIdx(b.name) || a.start - b.start);
     const pend = TIME_SLOTS.filter(s => hourMark(date, s) === 'pend').length;
     h += '<div class="card' + (isToday(date) ? ' today' : '') + '"><div class="card-hd"><b>週' + DAYS[di] + '</b><small>' + (date.getMonth() + 1) + '/' + date.getDate() + '</small>' +
       (isToday(date) ? '<em>今天</em>' : '') + (pend ? '<span class="badge">待審核 ' + pend + '</span>' : '') +
@@ -874,6 +937,12 @@ function openHourPicker(di) {
 }
 function closeHourPicker() { document.getElementById('hourPickModal').classList.remove('active'); }
 
+/* ─── 人員排序（主管在「⇅ 排序」設定，存在後端 settings.order；沒排到的人接在後面） ─── */
+function orderIdx(name) {
+  const i = (settings.order || []).indexOf(name);
+  return i < 0 ? 9999 : i;
+}
+
 /* ─── 人員篩選 ─── */
 function knownNames(extra) {
   const set = {};
@@ -881,7 +950,8 @@ function knownNames(extra) {
   [scheduleData, overrides].concat(extra || []).forEach(src => {
     Object.keys(src).forEach(k => people(src[k]).forEach(p => { if (p.name) set[p.name] = 1; }));
   });
-  return Object.keys(set);
+  const names = Object.keys(set);
+  return names.sort((a, b) => orderIdx(a) - orderIdx(b) || names.indexOf(a) - names.indexOf(b));
 }
 
 function renderLegend() {
@@ -889,7 +959,108 @@ function renderLegend() {
   const el = document.getElementById('legendPeople');
   if (!names.length) { el.innerHTML = '<span class="hint">還沒有人排班，點任一格開始排</span>'; return; }
   el.innerHTML = names.map(n => '<span class="person-chip' + (filterPerson === n ? ' active' : '') + '" data-name="' + esc(n) + '" onclick="toggleFilter(this.dataset.name)">' +
-    '<span class="dot" style="background:' + personColor(n).border + '"></span>' + esc(n) + '</span>').join('');
+    '<span class="dot" style="background:' + personColor(n).border + '"></span>' + esc(n) + '</span>').join('') +
+    '<span class="person-chip order-chip" onclick="openOrder()" title="調整人員排列順序">⇅ 排序</span>';
+}
+
+function openOrder() {
+  orderDraft = knownNames();
+  document.getElementById('orderPwInput').value = '';
+  document.getElementById('orderError').style.display = 'none';
+  renderOrderList();
+  document.getElementById('orderModal').classList.add('active');
+}
+function closeOrder() { document.getElementById('orderModal').classList.remove('active'); }
+let orderDraft = [];
+function renderOrderList() {
+  document.getElementById('orderList').innerHTML = orderDraft.map((n, i) =>
+    '<div class="order-row"><span class="dot" style="background:' + personColor(n).border + '"></span><span class="nm">' + (i + 1) + '. ' + esc(n) + '</span>' +
+    '<button onclick="moveOrder(' + i + ',-1)"' + (i ? '' : ' disabled') + ' title="往前">▲</button>' +
+    '<button onclick="moveOrder(' + i + ',1)"' + (i < orderDraft.length - 1 ? '' : ' disabled') + ' title="往後">▼</button></div>').join('');
+}
+function moveOrder(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= orderDraft.length) return;
+  [orderDraft[i], orderDraft[j]] = [orderDraft[j], orderDraft[i]];
+  renderOrderList();
+}
+function confirmOrder() {
+  const errEl = document.getElementById('orderError'), pw = document.getElementById('orderPwInput');
+  adminByPassword(pw.value).then(name => {
+    if (!name) { errEl.textContent = '密碼錯誤'; errEl.style.display = 'block'; pw.value = ''; return; }
+    const order = orderDraft.slice();
+    apiPost({ action: 'saveOrder', order: order }).then(okOrThrow).then(() => {
+      settings.order = order; writeCache(); closeOrder(); renderAll(); showToast('已更新人員排序');
+    }).catch(e => showToast('儲存失敗：' + (e.message || '請重試')));
+  });
+}
+
+/* ─── 請假申請（所有人都能送，主管在「📋 記錄 → 待審核」核准；核准後自動從班表拿掉） ─── */
+function openLeaveReq() {
+  document.getElementById('lrNameList').innerHTML = knownNames().map(n => '<option value="' + esc(n) + '">').join('');
+  const hours = Array.from({ length: 15 }, (_, i) => 8 + i);
+  document.getElementById('lrStart').innerHTML = hours.slice(0, -1).map(h => '<option value="' + h + '">' + pad2(h) + ':00</option>').join('');
+  document.getElementById('lrEnd').innerHTML = hours.slice(1).map(h => '<option value="' + h + '"' + (h === 22 ? ' selected' : '') + '>' + pad2(h) + ':00</option>').join('');
+  const today = dateStr(new Date());
+  ['lrName', 'lrReason'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('lrFrom').value = today; document.getElementById('lrTo').value = today;
+  document.getElementById('lrAllDay').checked = true; lrToggleHours();
+  document.getElementById('lrError').style.display = 'none';
+  document.getElementById('leaveReqModal').classList.add('active');
+  setTimeout(() => document.getElementById('lrName').focus(), 50);
+}
+function closeLeaveReq() { document.getElementById('leaveReqModal').classList.remove('active'); }
+function lrToggleHours() { document.getElementById('lrHours').style.display = document.getElementById('lrAllDay').checked ? 'none' : ''; }
+function lrFromChanged() { const f = document.getElementById('lrFrom'), t = document.getElementById('lrTo'); if (!t.value || t.value < f.value) t.value = f.value; }
+
+let leaveSending = false;
+function submitLeaveReq() {
+  const v = id => document.getElementById(id).value.trim();
+  const errEl = document.getElementById('lrError');
+  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  const allDay = document.getElementById('lrAllDay').checked;
+  const body = { action: 'submitLeave', name: v('lrName'), from: v('lrFrom'), to: v('lrTo'), allDay: allDay, reason: v('lrReason') };
+  if (!allDay) { body.startHour = +v('lrStart'); body.endHour = +v('lrEnd'); }
+  if (!body.name) { fail('請填姓名'); return; }
+  if (!body.from || !body.to || body.to < body.from) { fail('請確認日期（結束日不能早於開始日）'); return; }
+  if (!allDay && body.startHour >= body.endHour) { fail('結束時間要晚於開始時間'); return; }
+  if (leaveSending) return;
+  leaveSending = true;
+  const btn = document.getElementById('lrSubmit'); btn.disabled = true; btn.textContent = '送出中…';
+  apiPost(body).then(okOrThrow).then(resp => {
+    leaveReqs.push({ id: resp.id, name: body.name, from: body.from, to: body.to, startHour: allDay ? null : body.startHour, endHour: allDay ? null : body.endHour, reason: body.reason, status: '待審核' });
+    writeCache(); closeLeaveReq(); showToast('已送出請假申請，等主管核准');
+  }).catch(e => fail('送出失敗：' + (e.message || '請稍後再試'))).then(() => { leaveSending = false; btn.disabled = false; btn.textContent = '送出申請'; });
+}
+
+function leaveReqText(q) {
+  const f = ds => dayLabel(parseDate(ds));
+  return (q.from === q.to ? f(q.from) : f(q.from) + ' – ' + f(q.to)) + ' ' + (q.startHour == null ? '全天' : pad2(q.startHour) + ':00–' + pad2(q.endHour) + ':00');
+}
+function leaveCardHTML(q, idx) {
+  return '<div class="pending-card leave-card"><div class="log-meta"><span class="log-user">' + esc(q.name) + '</span><span class="log-scope leave">🙋 請假</span>' +
+    (q.time ? '<span class="log-time">' + esc(q.time) + '</span>' : '') + '</div>' +
+    '<div class="leave-range">📅 ' + esc(leaveReqText(q)) + '</div>' + (q.reason ? '<div class="leave-reason">💬 ' + esc(q.reason) + '</div>' : '') +
+    '<div class="leave-hint">核准後會自動把 ' + esc(q.name) + ' 從這段時間的班表拿掉</div>' +
+    '<div class="review-pw-row"><input type="password" class="scope-pw-input" id="leavePw_' + idx + '" placeholder="主管密碼" onkeydown="if(event.key===\'Enter\')leaveAction(\'' + q.id + '\',' + idx + ',\'approve\')"></div>' +
+    '<div class="review-actions"><button class="btn-approve" onclick="leaveAction(\'' + q.id + '\',' + idx + ',\'approve\')">✓ 核准</button>' +
+    '<button class="btn-reject" onclick="leaveAction(\'' + q.id + '\',' + idx + ',\'reject\')">✕ 拒絕</button></div>' +
+    '<div class="review-pw-error" id="leaveErr_' + idx + '"></div></div>';
+}
+function leaveAction(id, idx, action) {
+  const pwInput = document.getElementById('leavePw_' + idx), errEl = document.getElementById('leaveErr_' + idx);
+  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  if (!pwInput.value && !adminAuth) { fail('請輸入密碼'); return; }
+  (pwInput.value ? adminByPassword(pwInput.value) : Promise.resolve('ok')).then(approver => {
+    if (!approver) { fail('密碼錯誤'); pwInput.value = ''; return; }
+    showToast(action === 'approve' ? '核准中...' : '拒絕中...');
+    apiPost({ action: action === 'approve' ? 'approveLeave' : 'rejectLeave', id: id }).then(okOrThrow).then(resp => {
+      leaveReqs = leaveReqs.filter(q => q.id !== id);
+      writeCache(); updatePendingCount(); renderPendingList();
+      showToast(action === 'approve' ? '已核准' + (resp.count ? '，從班表移除 ' + resp.count + ' 格' : '（那段時間原本就沒排班）') : '已拒絕');
+      loadData();
+    }).catch(e => { fail(e.message || '操作失敗'); loadData().then(() => { updatePendingCount(); renderPendingList(); }); });
+  });
 }
 function toggleFilter(name) { filterPerson = filterPerson === name ? null : name; renderLegend(); renderView(); }
 
@@ -1163,11 +1334,13 @@ function switchHistoryTab(tab) {
   document.getElementById('tabLog').classList.toggle('active', tab === 'log');
   if (tab === 'pending') renderPendingList(); else renderLogList();
 }
-function updatePendingCount() { document.getElementById('pendingCount').textContent = pendingData.length || ''; }
+function updatePendingCount() { document.getElementById('pendingCount').textContent = (pendingData.length + leaveReqs.length) || ''; }
 
 function renderPendingList() {
   const body = document.getElementById('historyBody');
-  body.innerHTML = pendingData.length ? pendingData.map((p, i) => pendingCardHTML(p, i, 'pending')).join('') : '<div class="log-empty">沒有待審核的修改</div>';
+  body.innerHTML = (pendingData.length || leaveReqs.length)
+    ? leaveReqs.map(leaveCardHTML).join('') + pendingData.map((p, i) => pendingCardHTML(p, i, 'pending')).join('')
+    : '<div class="log-empty">沒有待審核的修改或請假申請</div>';
 }
 
 function renderLogList() {
