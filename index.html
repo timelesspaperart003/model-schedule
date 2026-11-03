@@ -19,8 +19,8 @@
     --accent: #6366f1; --success: #16a34a; --danger: #dc2626; --warn: #f59e0b;
     --header-bg: #111827;
     /* 📊 時間軸（出勤一覽）配色：上班／臨時加班斜紋／請假／臨時取消 */
-    --at-on: #bbf7d0; --at-on-t: #166534; --at-add: #86efac;
-    --at-leave: #ef4444; --at-leave-t: #fff; --at-cut: #fee2e2; --at-cut-t: #b91c1c;
+    --at-on: #d6e4d1; --at-on-t: #3f5a3a; --at-add: #b8cfb0;   /* 4 鼠尾草＋磚紅（2026-11-03 選定；6 淺灰＋紅：#e5e7eb #374151 #d1d5db #dc2626 #fff #fee2e2 #b91c1c） */
+    --at-leave: #c2554a; --at-leave-t: #fff; --at-cut: #f3dcd8; --at-cut-t: #a3463d;
     --shadow-xs: 0 1px 2px rgba(17,24,39,.05); --shadow-sm: 0 1px 3px rgba(17,24,39,.08);
     --shadow-md: 0 4px 12px rgba(17,24,39,.08); --shadow-lg: 0 8px 24px rgba(17,24,39,.08);
     --radius: 12px; --radius-sm: 8px; --radius-xs: 5px;
@@ -343,6 +343,17 @@
   .guest-card p { color: var(--text-muted); font-size: 14px; }
   .guest-btn { display: flex; justify-content: center; margin: 22px 0 10px; min-height: 44px; }
   .guest-err { color: var(--danger) !important; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 10px; margin-top: 8px; font-size: 13px !important; }
+  .pick-list { display: flex; flex-direction: column; gap: 8px; margin: 18px 0 6px; }
+  .pick-btn { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; font-family: inherit; text-align: left; }
+  .pick-btn:hover { border-color: var(--primary); background: var(--primary-soft); }
+  .pick-btn .me-av { width: 36px; height: 36px; font-size: 15px; }
+  .pick-btn b { font-size: 16px; flex: 1; } .pick-btn small { color: var(--text-muted); font-size: 12px; }
+  .guest-or { margin: 18px 0 10px; position: relative; font-size: 12px; color: var(--text-dim); }
+  .guest-or::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--border); }
+  .guest-or span { background: var(--surface); padding: 0 10px; position: relative; }
+  .guest-pw { display: flex; flex-direction: column; gap: 8px; }
+  .guest-pw .form-input { width: 100%; }
+  .guest-pw .btn { justify-content: center; padding: 10px; font-size: 14px; }
   .guest-hint { font-size: 12px !important; color: var(--text-dim) !important; margin-top: 14px; }
   /* 員工個人頁 */
   .me { max-width: 1100px; margin: 0 auto; }
@@ -379,9 +390,9 @@
   .me-empty { color: var(--text-dim); font-size: 13px; padding: 6px 0; }
   .lr-who { font-size: 14px; margin-bottom: 12px; }
   /* 人員設定 */
-  .ss-modal { width: 560px; }
+  .ss-modal { width: 820px; max-width: 96vw; }
   .ss-list { max-height: 55vh; overflow-y: auto; }
-  .ss-row { display: grid; grid-template-columns: 90px 1fr 92px; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .ss-row { display: grid; grid-template-columns: 80px minmax(0, 1.4fr) 88px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
   .ss-nm { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; } .ss-nm i { width: 8px; height: 8px; border-radius: 50%; }
   .ss-row .form-input { font-size: 13px; padding: 7px 9px; }
   @media (max-width: 760px) {
@@ -390,7 +401,7 @@
     .me-day .me-dh { grid-column: 1; grid-row: 1 / span 4; flex-direction: column; align-items: flex-start; gap: 0; }
     .me-day > :not(.me-dh) { grid-column: 2; }
     .me-act { width: 100%; margin-left: 0; }
-    .ss-row { grid-template-columns: 1fr 92px; } .ss-nm { grid-column: span 2; }
+    .ss-row { grid-template-columns: 1fr 1fr; } .ss-nm { grid-column: span 2; }
   }
   .auth-box { display: flex; align-items: center; min-height: 32px; }
   .order-list { max-height: 50vh; overflow-y: auto; margin-bottom: 12px; text-align: left; }
@@ -667,7 +678,7 @@
 <div class="scope-overlay" id="staffSetupModal">
   <div class="scope-modal ss-modal" style="text-align:left">
     <div class="scope-title">👤 人員設定</div>
-    <div class="scope-desc">填每個人的 <b>Gmail</b>，他用這個帳號登入就只看得到自己的班。<br><b>正職</b>可以請假；<b>承攬制</b>改成回報「可以接案的日期＋時段」，送出直接排進班表。</div>
+    <div class="scope-desc">填每個人的 <b>Gmail</b>，他用這個帳號登入就只看得到自己的班。<br><b>正職</b>可以請假；<b>承攬制</b>改成回報「可以接案的日期＋時段」，送出直接排進班表。<br><b>帳號＋密碼</b>：給沒有 Gmail 或共用帳號的人（例如承攬制），他在登入畫面輸入帳號密碼就好。Gmail 和帳號擇一即可。<br>好幾個人<b>共用同一個 Gmail</b> 也可以，登入後會請他選自己的名字。</div>
     <div class="ss-list" id="ssList"></div>
     <div class="scope-pw-error" id="ssError" style="display:none;"></div>
     <div class="scope-pw-row" style="margin-top:12px"><button class="scope-pw-confirm" style="flex:1" onclick="saveStaffSetup()">儲存</button></div>
@@ -889,17 +900,18 @@ function loadData() {
  * 其他帳號或沒登入只看到登入畫面。所有動作都帶 idToken 給後端再驗一次。
  * ID token 一小時過期；登入狀態記在這台裝置，過期時自動向 Google 換新的（不用再按一次）。 */
 const SESSION_KEY = 'modelScheduleSession';
-let session = null;   // { token, exp, role: 'admin'|'staff', name, type: '正職'|'承攬', email }
+let session = null;   // Google：{ token, exp, role, name, type, email, choices }（choices：共用帳號的幾個人，name 空＝還沒選）；帳號密碼：{ pwToken, exp, role: 'staff', name, type, user }
 let authMsg = '';     // 登入畫面上的提示（例如帳號還沒登記）
 let myRequests = [], myAvail = [];   // 員工個人頁：自己的請假申請／可接案回報
 function sessionOk() { return !!(session && session.exp * 1000 > Date.now() + 30000); }
 function isAdmin() { return sessionOk() && session.role === 'admin'; }
-function isStaff() { return sessionOk() && session.role === 'staff'; }
+function isStaff() { return sessionOk() && session.role === 'staff' && !!session.name; }
+function needPick() { return sessionOk() && session.role === 'staff' && !session.name; }
 function apiPost(body) {
   if (!API_URL) return Promise.reject(new Error('尚未設定 API_URL'));
-  if (sessionOk() && !body.idToken) body = Object.assign({ idToken: session.token }, body);
+  if (sessionOk() && !body.idToken && !body.pwToken) body = Object.assign(session.pwToken ? { pwToken: session.pwToken } : { idToken: session.token }, session.name && session.role === 'staff' && !session.pwToken ? { asName: session.name } : {}, body);
   return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }).then(r => r.json()).then(resp => {
-    if (resp && /登入已過期/.test(resp.error || '')) { setSession(null); googlePrompt(); }
+    if (resp && /登入已過期/.test(resp.error || '')) { const g = session && !session.pwToken; authMsg = '登入已過期，請重新登入'; setSession(null); if (g) googlePrompt(); }
     return resp;
   });
 }
@@ -922,7 +934,7 @@ function applyRole() {
   b.toggle('is-staff', isStaff());
   b.toggle('is-staff-ft', isStaff() && session.type !== '承攬');
   b.toggle('is-staff-ct', isStaff() && session.type === '承攬');
-  b.toggle('is-guest', !isAdmin() && !isStaff());
+  b.toggle('is-guest', !isAdmin() && !isStaff());   // 共用帳號還沒選名字也算 guest（只看得到選名字的畫面）
   renderAuthBox();
 }
 function gButton(el, size) {
@@ -931,7 +943,8 @@ function gButton(el, size) {
 function renderAuthBox() {
   const box = document.getElementById('authBox');
   if (sessionOk()) {
-    box.innerHTML = '<button class="btn-header" onclick="signOut()" title="' + esc(session.email) + '">👤 ' + esc(session.name) + '・登出</button>';
+    box.innerHTML = (session.choices && session.name ? '<button class="btn-header" onclick="switchMe()" title="這個帳號有多位成員，換成別人">⇄ 換人</button> ' : '') +
+      '<button class="btn-header" onclick="signOut()" title="' + esc(session.email || session.user || '') + '">👤 ' + esc(session.name || session.email) + '・登出</button>';
     return;
   }
   box.innerHTML = '<div id="gBtn"></div>';
@@ -947,7 +960,11 @@ function onGoogleCredential(resp) {
   const token = resp.credential, info = decodeJwt(token);
   showToast('確認登入身分中...');
   apiPost({ action: 'whoami', idToken: token }).then(r => {
-    if (r && r.success) { authMsg = ''; setSession({ token: token, exp: info.exp, role: r.role, name: r.name, type: r.type || '', email: r.email }); showToast(r.name + ' 已登入'); }
+    if (r && r.success) {
+      authMsg = '';
+      setSession({ token: token, exp: info.exp, role: r.role, name: r.name || '', type: r.type || '', email: r.email, choices: r.choices || null });
+      showToast(r.name ? r.name + ' 已登入' : '請選你的名字');
+    }
     else { authMsg = (r && r.error) || '登入失敗'; setSession(null); showToast(authMsg); }
   }).catch(() => showToast('無法連線雲端，請稍後再試'));
 }
@@ -958,7 +975,7 @@ function initGoogle() {
   if (document.getElementById('gBtnBig')) gButton(document.getElementById('gBtnBig'), 'large');
   // 之前登入過、但 token 過期 → 自動換新
   let saved = null; try { saved = JSON.parse(localStorage.getItem(SESSION_KEY)); } catch (e) {}
-  if (saved && !sessionOk()) googlePrompt();
+  if (saved && !saved.pwToken && !sessionOk()) googlePrompt();
 }
 function googlePrompt() { if (window.google && google.accounts && GOOGLE_CLIENT_ID) google.accounts.id.prompt(); }
 function signOut() {
@@ -1100,7 +1117,7 @@ function renderView() {
   document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.v === viewMode));
   // 不是 admin：員工看自己的班表、沒登入看登入畫面
   if (!isAdmin()) {
-    document.getElementById('scheduleView').innerHTML = isStaff() ? renderMine(dates) : renderGuest();
+    document.getElementById('scheduleView').innerHTML = isStaff() ? renderMine(dates) : needPick() ? renderPick() : renderGuest();
     gButton(document.getElementById('gBtnBig'), 'large');
     return;
   }
@@ -1206,12 +1223,42 @@ function bindAttendHover() {
   tb.onmouseleave = clear;
 }
 
+/* ─── 共用帳號：登入後選自己的名字（只會列出登記在這個 email 下的人） ─── */
+function renderPick() {
+  return '<div class="guest"><div class="guest-card"><div class="guest-logo">👋</div><h2>你是誰？</h2>' +
+    '<p>' + esc(session.email) + ' 登記了好幾位成員，請選你的名字</p><div class="pick-list">' +
+    session.choices.map(c => '<button class="pick-btn" data-name="' + esc(c.name) + '" onclick="pickMe(this.dataset.name)"><span class="me-av" style="background:' + personColor(c.name).bg + ';color:' + personColor(c.name).text + ';border-color:' + personColor(c.name).border + '">' + esc(Array.from(c.name)[0] || '') + '</span><b>' + esc(c.name) + '</b><small>' + (c.type === '承攬' ? '承攬制' : '正職') + '</small></button>').join('') +
+    '</div><p class="guest-hint">選錯可以按右上角「⇄ 換人」重選。</p></div></div>';
+}
+function pickMe(name) {
+  const c = (session.choices || []).find(x => x.name === name);
+  if (!c) return;
+  setSession(Object.assign({}, session, { name: c.name, type: c.type }));
+  showToast(c.name + ' 已登入');
+}
+function switchMe() { setSession(Object.assign({}, session, { name: '', type: '' })); }
+
 /* ─── 沒登入：登入畫面 ─── */
 function renderGuest() {
   return '<div class="guest"><div class="guest-card"><div class="guest-logo">🧩</div><h2>模型部排班表</h2>' +
-    '<p>請用 Google 帳號登入，查看你的班表</p><div id="gBtnBig" class="guest-btn"></div>' +
+    '<p>請登入查看你的班表</p><div id="gBtnBig" class="guest-btn"></div>' +
+    '<div class="guest-or"><span>承攬制用帳號密碼登入</span></div>' +
+    '<div class="guest-pw"><input class="form-input" id="pwUser" placeholder="帳號" autocomplete="username">' +
+    '<input class="form-input" id="pwPass" type="password" placeholder="密碼" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')loginWithPw()">' +
+    '<button class="btn btn-primary" id="pwBtn" onclick="loginWithPw()">登入</button></div>' +
     (authMsg ? '<p class="guest-err">' + esc(authMsg) + '</p>' : '') +
-    '<p class="guest-hint">第一次使用要先請主管登記你的 Gmail。</p></div></div>';
+    '<p class="guest-hint">第一次使用要先請主管登記你的 Gmail 或帳號。</p></div></div>';
+}
+let pwBusy = false;
+function loginWithPw() {
+  const user = document.getElementById('pwUser').value.trim(), pw = document.getElementById('pwPass').value;
+  if (!user || !pw) { showToast('請輸入帳號和密碼'); return; }
+  if (pwBusy) return;
+  pwBusy = true; const btn = document.getElementById('pwBtn'); btn.disabled = true; btn.textContent = '登入中…';
+  apiPost({ action: 'loginPw', user: user, password: pw }).then(r => {
+    if (r && r.success) { authMsg = ''; setSession({ pwToken: r.pwToken, exp: r.exp, role: 'staff', name: r.name, type: r.type, user: user }); showToast(r.name + ' 已登入'); }
+    else { authMsg = (r && r.error) || '登入失敗'; renderView(); }
+  }).catch(() => showToast('無法連線雲端，請稍後再試')).then(() => { pwBusy = false; const b = document.getElementById('pwBtn'); if (b) { b.disabled = false; b.textContent = '登入'; } });
 }
 
 /* ─── 員工個人頁：只看自己的班（後端只回傳這個人的資料） ───
@@ -1265,7 +1312,9 @@ function openStaffSetup() {
     const s = staff[n] || {};
     return '<div class="ss-row" data-name="' + esc(n) + '"><span class="ss-nm"><i style="background:' + personColor(n).border + '"></i>' + esc(n) + '</span>' +
       '<input class="form-input ss-email" type="email" placeholder="Gmail（例：abc@gmail.com）" value="' + esc(s.email || '') + '" autocomplete="off">' +
-      '<select class="form-input ss-type"><option value="正職"' + (s.type !== '承攬' ? ' selected' : '') + '>正職</option><option value="承攬"' + (s.type === '承攬' ? ' selected' : '') + '>承攬制</option></select></div>';
+      '<select class="form-input ss-type"><option value="正職"' + (s.type !== '承攬' ? ' selected' : '') + '>正職</option><option value="承攬"' + (s.type === '承攬' ? ' selected' : '') + '>承攬制</option></select>' +
+      '<input class="form-input ss-user" placeholder="帳號（選填）" value="' + esc(s.user || '') + '" autocomplete="off">' +
+      '<input class="form-input ss-pw" type="password" placeholder="' + (s.hasPw ? '已設密碼（不改留空）' : '密碼') + '" autocomplete="new-password"></div>';
   }).join('');
   document.getElementById('ssError').style.display = 'none';
   document.getElementById('staffSetupModal').classList.add('active');
@@ -1277,13 +1326,16 @@ function saveStaffSetup() {
   document.querySelectorAll('#ssList .ss-row').forEach(r => {
     const email = r.querySelector('.ss-email').value.trim().toLowerCase();
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) bad = r.dataset.name + ' 的 email 格式不對';
-    staff[r.dataset.name] = { email: email, type: r.querySelector('.ss-type').value };
+    const user = r.querySelector('.ss-user').value.trim(), pw = r.querySelector('.ss-pw').value, had = (settings.staff || {})[r.dataset.name] || {};
+    if (user && !pw && !(had.hasPw && had.user)) bad = r.dataset.name + ' 設了帳號，請也設定密碼';
+    if (pw && pw.length < 4) bad = r.dataset.name + ' 的密碼至少要 4 個字';
+    staff[r.dataset.name] = { email: email, type: r.querySelector('.ss-type').value, user: user, password: pw };
   });
   if (bad) { errEl.textContent = bad; errEl.style.display = 'block'; return; }
   requireAdmin().then(name => {
     if (!name) return;
     apiPost({ action: 'saveStaff', staff: staff }).then(okOrThrow)
-      .then(() => { settings.staff = staff; writeCache(); closeStaffSetup(); showToast('已儲存人員設定'); })
+      .then(() => { closeStaffSetup(); showToast('已儲存人員設定'); loadData(); })
       .catch(e => { errEl.textContent = '儲存失敗：' + (e.message || '請重試'); errEl.style.display = 'block'; });
   });
 }
