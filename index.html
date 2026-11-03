@@ -247,76 +247,6 @@
   .diff-box b.diff-lv { font-size: 13px; color: #c2410c; }
   .diff-add { color: #15803d; font-weight: 700; } .diff-del { color: #b91c1c; font-weight: 700; } .diff-note { color: var(--text-secondary); }
   .hist-tools { padding: 8px 22px 0; display: flex; justify-content: flex-end; }
-  /* A／B 人員表 */
-  .rs-scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
-  .rs { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 900px; }
-  .rs th, .rs td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
-  .rs thead th { background: var(--surface-2); font-size: 13px; padding: 9px 6px; }
-  .rs thead th small { display: block; font-weight: 500; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-  .rs thead th.today { background: var(--primary-soft); color: var(--primary-text); }
-  .rs-pend { display: inline-block; margin-top: 3px; font-size: 10px; font-weight: 700; color: #fff; background: var(--warn); padding: 0 6px; border-radius: 4px; }
-  .rs-who { width: 110px; min-width: 90px; text-align: left; padding: 0 12px; position: sticky; left: 0; background: var(--surface); z-index: 1; }
-  .rs tbody .rs-who { font-size: 14px; font-weight: 700; border-left: 4px solid; }
-  .rs tbody tr.dimmed { opacity: .2; }
-  .rs td { padding: 6px; vertical-align: middle; height: 48px; cursor: pointer; }
-  .rs td:hover { background: var(--cell-bg); }
-  .rs td.today { background: #fafaff; }
-  .rs td.off { text-align: center; }
-  .rs-none { color: var(--text-dim); }
-  .rs-none.ovr { color: var(--primary); font-weight: 700; }
-  .rs-chip { display: inline-block; padding: 3px 9px; border-radius: 6px; }
-  .rs-chip.ovr, .rs-times.ovr { color: var(--primary) !important; box-shadow: inset 0 0 0 1.5px #a5b4fc; }
-  .rs-times.ovr { display: inline-block; padding: 1px 5px; border-radius: 5px; }
-  .rs-t { display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; white-space: nowrap; }
-  .rs-note { display: block; font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; margin-top: 2px; }
-  .rs-mini { display: block; position: relative; height: 7px; background: #f1f2f4; border-radius: 4px; margin-top: 5px; overflow: hidden; }
-  .rs-mini i { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
-  .rs-leave { display: inline-block; background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-size: 11.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px; margin-top: 3px; white-space: nowrap; }
-  .rs-leave.pending { border-style: dashed; opacity: .85; }
-  .rs tfoot td, .rs tfoot th { background: var(--surface-2); font-size: 12px; color: var(--text-muted); text-align: center; height: 36px; cursor: default; }
-  .rs tfoot th { text-align: left; }
-  .rs tfoot td b { color: var(--text); font-size: 15px; }
-  /* 🎨 班別表 */
-  .sf-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 10px; font-size: 12px; }
-  .sf-key { display: inline-flex; align-items: center; gap: 6px; }
-  .sf-key small { color: var(--text-muted); }
-  .sf-code { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px; color: #fff; font-style: normal; font-size: 12px; font-weight: 700; flex-shrink: 0; }
-  .sf-code.ovr-demo { background: #3b82f6; outline: 1.5px dashed #111827; outline-offset: 2px; }
-  .sf-who { font-weight: 600 !important; color: var(--text) !important; border-left: none !important; }
-  .sf-who i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
-  .sf-cell { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 3px; border-radius: 7px; background: color-mix(in srgb, var(--c) 14%, #fff); }
-  .sf-cell.calm { background: transparent; padding-left: 0; }
-  .sf-cell.calm .sf-t { color: var(--text-muted); font-weight: 500; }
-  .sf-cell.ovr { outline: 1.5px dashed #111827; outline-offset: 1px; }
-  .sf-t { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; }
-  .sf-sum { display: inline-block; margin: 0 5px; font-weight: 700; font-size: 12px; }
-  .sf-sum b { font-size: 14px; }
-  /* C 橫向時間軸 */
-  .hz { min-width: 900px; }
-  .hz-hd { display: flex; background: var(--surface-2); border-bottom: 1px solid var(--border); }
-  .hz-axis { flex: 1; display: grid; grid-template-columns: repeat(14, 1fr); }
-  .hz-axis span { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--text-muted); padding: 8px 0 8px 4px; border-left: 1px solid var(--border); }
-  .hz-day { width: 100px; flex-shrink: 0; padding: 8px 10px; border-right: 1px solid var(--border); }
-  .hz-row { display: flex; border-bottom: 1px solid var(--border); }
-  .hz-row:last-child { border-bottom: none; }
-  .hz-row.today { background: #f7f8ff; }
-  .hz-row .hz-day { cursor: pointer; }
-  .hz-row .hz-day:hover { background: var(--cell-bg); }
-  .hz-row .hz-day b { font-size: 15px; }
-  .hz-row .hz-day small { display: block; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); font-size: 11px; }
-  .hz-row .hz-day .cnt { display: block; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-  .hz-body { flex: 1; padding: 6px 0; position: relative; background-image: linear-gradient(90deg, #eceef1 1px, transparent 1px); }
-  .hz-lane { position: relative; height: 26px; margin: 3px 0; }
-  .hz-lane.dimmed { opacity: .15; }
-  .hz-bar { position: absolute; top: 0; bottom: 0; background: #fff; border-left: 4px solid; border-radius: 5px; box-shadow: 0 1px 2px rgba(17,24,39,.15); display: flex; align-items: center; gap: 8px; padding: 0 8px; font-size: 12px; white-space: nowrap; overflow: hidden; cursor: pointer; }
-  .hz-bar:hover { box-shadow: 0 2px 6px rgba(17,24,39,.2); }
-  .hz-bar b { font-size: 12.5px; }
-  .hz-bar .t { font-family: 'JetBrains Mono', monospace; font-size: 11px; opacity: .8; }
-  .hz-bar small { color: var(--text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
-  .hz-bar .rs-leave { margin-top: 0; padding: 0 6px; font-size: 11px; }
-  .hz-bar.ovr { box-shadow: 0 0 0 1.5px #a5b4fc, 0 1px 2px rgba(17,24,39,.15); }
-  .hz-bar.leave { background: #fffaf3; border-left-color: #f97316; color: #c2410c; cursor: default; }
-  .hz-none { color: var(--text-dim); font-size: 13px; padding: 6px 12px; cursor: pointer; }
   /* 🏖️ 請假檢視 */
   .lv-summary { display: flex; align-items: center; font-size: 14px; color: var(--text-secondary); margin-bottom: 12px; }
   .lv-summary b { font-size: 18px; color: var(--text); margin: 0 4px; }
@@ -331,7 +261,7 @@
   .lv-row.pending { border-style: dashed; border-left-style: solid; opacity: .85; }
   .lv-row.dimmed { opacity: .15; }
   .lv-today-list .lv-row { margin-bottom: 0; }
-  .card-hd .lv-badge { background: #f97316; }
+  .card-hd .lv-badge { background: var(--at-leave); }
   body:not(.is-admin) .admin-only { display: none !important; }
   body:not(.is-staff-ft) .staff-ft, body:not(.is-staff-ct) .staff-ct { display: none !important; }
   body.is-guest .need-login { display: none !important; }
@@ -538,10 +468,6 @@
 <div class="legend-bar admin-only">
   <div class="view-toggle">
     <button class="view-btn" data-v="timeline" onclick="setView('timeline')" title="原本的直向時間軸">📊 時間軸</button>
-    <button class="view-btn" data-v="roster" onclick="setView('roster')" title="A：人在左、日期在上，格子寫時間">👥 人員表</button>
-    <button class="view-btn" data-v="rosterBar" onclick="setView('rosterBar')" title="B：人員表＋迷你時間條">📶 人員表＋時間條</button>
-    <button class="view-btn" data-v="hz" onclick="setView('hz')" title="C：日期在左、時間在上">↔️ 橫向時間軸</button>
-    <button class="view-btn" data-v="shift" onclick="setView('shift')" title="顏色代表班別（早班／長班／午晚班／彈性），不是人名">🎨 班別表</button>
     <button class="view-btn" data-v="cards" onclick="setView('cards')">🗂️ 卡片</button>
     <button class="view-btn" data-v="leave" onclick="setView('leave')">🏖️ 請假</button>
   </div>
@@ -554,11 +480,11 @@
   <div class="notes-section admin-only">
     <div class="notes-title">📋 使用說明</div>
     <div class="notes-content">
-      上方可切換版面（試用中）：「📊 時間軸」每天下面固定一排人名，淺綠＝有上班（上面寫時間和時數）、紅＝請假／臨時取消，可切整週或放大單日、「👥 人員表」一列一人、「📶 人員表＋時間條」多一條小時間條、「↔️ 橫向時間軸」日期在左時間在上、「🗂️ 卡片」、「🏖️ 請假」。點格子／色塊就能編輯那天；人員表的紫框＝跟固定班表不一樣（臨時調整）。<br>
+      上方可切換版面：「📊 時間軸」每天下面固定一排人名，綠＝有上班（上面寫時間和時數）、紅＝請假／臨時取消，可切整週或放大單日；「🗂️ 卡片」一天一張；「🏖️ 請假」這週誰請假。點格子就能編輯那天。<br>
       儲存時選「僅這週」只改那一天，選「這天之後的所有週」會改固定班表（之前的週次保留原樣）。要一次排一整段時間或很多天，用「🗓️ 批量排班」；每週固定的人員（例如每週一三五 08–12），用批量排班裡的「📌 固定班表（每週）」一次設定。<br>
-      admin 用右上角 Google 登入後，修改直接生效；員工選自己的名字送出，會變成「待審核」，由 admin 在「📋 記錄」批准或拒絕。<br>
+      這頁只有 admin 看得到。員工用自己的 Gmail（承攬制用帳號密碼）登入只會看到自己的班表，帳號在「👤 人員設定」登記。<br>
       點上方人名可只看那些人的班（可多選，再點一次取消，按「✕ 全部」清除）；按「⇅ 排序」可調整人員順序。<br>
-      要請假按「🙋 請假」送出申請，主管核准後會自動從班表拿掉（有在 Connecteam 的人，在 Connecteam 請假核准後也會自動處理）。
+      正職在個人頁按「🙋 請假」送出，admin 在「📋 記錄」核准後自動從班表拿掉（Connecteam 核准的請假也會自動處理）；承攬制回報的可接案時段會直接排進班表。
     </div>
   </div>
 </div>
@@ -1109,7 +1035,9 @@ function dimCls(name) { return Object.keys(filterPeople).length && !filterPeople
 
 /* ─── 畫面切換：時間軸／卡片（記在這台裝置） ─── */
 const VIEW_KEY = 'modelScheduleView';
-let viewMode = (() => { try { return localStorage.getItem(VIEW_KEY); } catch (e) { return null; } })() || (isMobile() ? 'cards' : 'timeline');
+// 只留「時間軸」「卡片」「請假」（試用過的人員表／橫向時間軸／班別表已拿掉；之前存的舊選擇一律回到時間軸）
+let viewMode = (() => { try { return localStorage.getItem(VIEW_KEY); } catch (e) { return null; } })();
+if (['timeline', 'cards', 'leave'].indexOf(viewMode) < 0) viewMode = 'timeline';
 function setView(v) { viewMode = v; try { localStorage.setItem(VIEW_KEY, v); } catch (e) {} renderView(); }
 
 function renderView() {
@@ -1124,9 +1052,6 @@ function renderView() {
   let h;
   if (viewMode === 'cards') h = renderCards(dates);
   else if (viewMode === 'leave') h = renderLeaveView(dates);
-  else if (viewMode === 'roster' || viewMode === 'rosterBar') h = renderRoster(dates, viewMode === 'rosterBar');
-  else if (viewMode === 'hz') h = renderHz(dates);
-  else if (viewMode === 'shift') h = renderShift(dates);
   else h = renderAttend(dates);
   document.getElementById('scheduleView').innerHTML = h;
   bindAttendHover();
@@ -1368,160 +1293,7 @@ function renderCards(dates) {
   return h + '</div>';
 }
 
-/* ─── 人員表（A／B）、橫向時間軸（C）共用 ─── */
-// 某人某天的上班時段（連續小時併成一段）和備註
-function personDay(name, date) {
-  const segs = [], notes = []; let open = null;
-  TIME_SLOTS.forEach(slot => {
-    const p = people(getCell(slot.id, date).data).find(x => x.name === name);
-    if (!p) { open = null; return; }
-    if (p.note && notes.indexOf(p.note) < 0) notes.push(p.note);
-    if (open) open[1] = slot.hour + 1; else { open = [slot.hour, slot.hour + 1]; segs.push(open); }
-  });
-  return { segs: segs, notes: notes };
-}
-// 這天跟固定班表不一樣的人（被加、被拿掉、備註不同）
-function changedPeople(date) {
-  const out = {}, ds = dateStr(date);
-  TIME_SLOTS.forEach(slot => {
-    const c = getCell(slot.id, date);
-    if (!c.isOverride) return;
-    const o = people(c.data), t = people(tmplAt(c.templateKey, ds));
-    o.forEach(p => { const q = t.find(x => x.name === p.name); if (!q || (q.note || '') !== (p.note || '')) out[p.name] = 1; });
-    t.forEach(q => { if (!o.some(p => p.name === q.name)) out[q.name] = 1; });
-  });
-  return out;
-}
-// 臨時調整的人：提示「固定班原本是幾點」
-function tmplNote(name, date) {
-  const ds = dateStr(date), segs = []; let open = null;
-  TIME_SLOTS.forEach(slot => {
-    const has = people(tmplAt(slot.id + '-' + DAYS[dayIdx(date)], ds)).some(p => p.name === name);
-    if (!has) { open = null; return; }
-    if (open) open[1] = slot.hour + 1; else { open = [slot.hour, slot.hour + 1]; segs.push(open); }
-  });
-  return '臨時調整｜固定班：' + (segs.length ? segs.map(segTxt).join('、') : '這天沒有排');
-}
 function pendCount(date) { return TIME_SLOTS.filter(s => hourMark(date, s) === 'pend').length; }
-function segTxt(s) { return pad2(s[0]) + '–' + pad2(s[1]); }
-function leaveTag(l) { return '<span class="rs-leave' + (l.pending ? ' pending' : '') + '">🏖️ ' + (l.time === '全天' ? '請假' : esc(l.time)) + (l.pending ? '（審核中）' : '') + '</span>'; }
-function rosterHead(dates) {
-  return dates.map((d, i) => {
-    const pc = pendCount(d);
-    return '<th class="' + (isToday(d) ? 'today' : '') + '">週' + DAYS[i] + (isToday(d) ? '<span class="today-badge">TODAY</span>' : '') +
-      '<small>' + (d.getMonth() + 1) + '/' + d.getDate() + '</small>' + (pc ? '<span class="rs-pend">待審核 ' + pc + '</span>' : '') + '</th>';
-  }).join('');
-}
-
-/* A 人員表／B 人員表＋時間條：一列一人（照排序），一欄一天 */
-function renderRoster(dates, withBar) {
-  const names = knownNames(), info = dates.map(d => ({ changed: changedPeople(d), leaves: leavesOn(dateStr(d)) })), count = dates.map(() => 0);
-  let h = '<div class="rs-scroll"><table class="rs"><thead><tr><th class="rs-who">人員</th>' + rosterHead(dates) + '</tr></thead><tbody>';
-  names.forEach(n => {
-    const c = personColor(n);
-    h += '<tr class="' + dimCls(n).trim() + '"><th class="rs-who" style="border-left-color:' + c.border + ';color:' + c.text + '">' + esc(n) + '</th>';
-    dates.forEach((d, di) => {
-      const r = personDay(n, d), ovr = info[di].changed[n], lv = info[di].leaves.find(l => l.name === n);
-      const cls = (isToday(d) ? 'today' : '') + (r.segs.length ? '' : ' off');
-      const click = r.segs.length ? 'openEdit(\'h' + pad2(r.segs[0][0]) + '\',' + di + ')' : 'openHourPicker(' + di + ')';
-      let inner;
-      if (!r.segs.length) inner = lv ? leaveTag(lv) : '<span class="rs-none' + (ovr ? ' ovr' : '') + '">—</span>';
-      else {
-        count[di]++;
-        const times = r.segs.map(s => '<span class="rs-t">' + segTxt(s) + '</span>').join('');
-        inner = (withBar ? '<span class="rs-times' + (ovr ? ' ovr' : '') + '">' + times + '</span>'
-          : '<span class="rs-chip' + (ovr ? ' ovr' : '') + '" style="background:' + c.bg + ';color:' + (ovr ? '' : c.text) + '">' + times + '</span>') +
-          (r.notes.length ? '<span class="rs-note" title="' + esc(r.notes.join('、')) + '">' + esc(r.notes.join('、')) + '</span>' : '') +
-          (withBar ? '<span class="rs-mini">' + r.segs.map(s => '<i style="left:' + ((s[0] - FIRST_HOUR) / TIME_SLOTS.length * 100) + '%;width:' + ((s[1] - s[0]) / TIME_SLOTS.length * 100) + '%;background:' + c.border + '"></i>').join('') + '</span>' : '') +
-          (lv ? leaveTag(lv) : '');
-      }
-      h += '<td class="' + cls + '" onclick="' + click + '"' + (ovr ? ' title="' + esc(tmplNote(n, d)) + '"' : '') + '>' + inner + '</td>';
-    });
-    h += '</tr>';
-  });
-  h += '</tbody><tfoot><tr><th class="rs-who">在班人數</th>' + count.map((n, i) => '<td class="' + (isToday(dates[i]) ? 'today' : '') + '"><b>' + n + '</b> 人</td>').join('') + '</tr></tfoot></table></div>';
-  return h;
-}
-
-/* C 橫向時間軸：一天一區（日期在左），時間 08–22 在上，一人一條橫條（照排序） */
-function renderHz(dates) {
-  const names = knownNames(), N = TIME_SLOTS.length;
-  let h = '<div class="rs-scroll"><div class="hz"><div class="hz-hd"><div class="hz-day"></div><div class="hz-axis">' +
-    TIME_SLOTS.map(s => '<span>' + pad2(s.hour) + '</span>').join('') + '</div></div>';
-  dates.forEach((d, di) => {
-    const changed = changedPeople(d), lvs = leavesOn(dateStr(d)), pc = pendCount(d), rows = [];
-    names.forEach(n => {
-      const r = personDay(n, d), lv = lvs.find(l => l.name === n);
-      if (r.segs.length || lv) rows.push({ n: n, r: r, lv: lv });
-    });
-    const working = rows.filter(x => x.r.segs.length).length;
-    h += '<div class="hz-row' + (isToday(d) ? ' today' : '') + '"><div class="hz-day" onclick="openHourPicker(' + di + ')" title="編輯這天">' +
-      '<b>週' + DAYS[di] + '</b><small>' + (d.getMonth() + 1) + '/' + d.getDate() + '</small>' + (isToday(d) ? '<span class="today-badge">TODAY</span>' : '') +
-      '<span class="cnt">' + working + ' 人在班</span>' + (pc ? '<span class="rs-pend">待審核 ' + pc + '</span>' : '') + '</div>' +
-      '<div class="hz-body" style="background-size:calc(100% / ' + N + ') 100%">';
-    if (!rows.length) h += '<div class="hz-none" onclick="openHourPicker(' + di + ')">本日無排班</div>';
-    rows.forEach(x => {
-      const c = personColor(x.n);
-      h += '<div class="hz-lane' + dimCls(x.n) + '">';
-      if (!x.r.segs.length) {
-        // 全天假拉滿；以小時請的畫在請假那段時間（'13:00–15:30' → 13～15.5）
-        const m = x.lv.time.match(/^(\d\d):(\d\d)–(\d\d):(\d\d)$/);
-        const a = m ? Math.max(FIRST_HOUR, +m[1] + m[2] / 60) : FIRST_HOUR, b = m ? Math.min(FIRST_HOUR + N, +m[3] + m[4] / 60) : FIRST_HOUR + N;
-        h += '<div class="hz-bar leave" style="left:' + ((a - FIRST_HOUR) / N * 100) + '%;width:' + (Math.max(b - a, 1.5) / N * 100) + '%">' + leaveTag(x.lv) + '<b>' + esc(x.n) + '</b></div>';
-      }
-      x.r.segs.forEach(s => {
-        h += '<div class="hz-bar' + (changed[x.n] ? ' ovr' : '') + '" onclick="openEdit(\'h' + pad2(s[0]) + '\',' + di + ')" title="' + esc(x.n + ' ' + segTxt(s) + (x.r.notes.length ? '（' + x.r.notes.join('、') + '）' : '') + (changed[x.n] ? '\n' + tmplNote(x.n, d) : '')) + '" ' +
-          'style="left:' + ((s[0] - FIRST_HOUR) / N * 100) + '%;width:' + ((s[1] - s[0]) / N * 100) + '%;border-left-color:' + c.border + ';color:' + c.text + '">' +
-          '<b>' + esc(x.n) + '</b><span class="t">' + segTxt(s) + '</span>' + (x.r.notes.length ? '<small>' + esc(x.r.notes.join('、')) + '</small>' : '') + (x.lv ? leaveTag(x.lv) : '') + '</div>';
-      });
-      h += '</div>';
-    });
-    h += '</div></div>';
-  });
-  return h + '</div></div>';
-}
-
-/* ─── 🎨 班別表：顏色代表班別、不代表人。一般早班安靜顯示，特殊工時（長班／午晚班／彈性）才拉出小時間軸 ───
- * 判斷用當天「最早上班～最晚下班」（中間休息不影響），由上往下找第一個符合的班別；要調規則改這裡 */
-const SHIFT_TYPES = [
-  { code: '早', name: '早班', rule: '08–09 上班、16–18 下班', color: '#3b82f6', calm: true, test: (a, b) => a <= 9 && b >= 16 && b <= 18 },
-  { code: '長', name: '長班', rule: '一天 11 小時以上', color: '#8b5cf6', test: (a, b) => b - a >= 11 },
-  { code: '晚', name: '午晚班', rule: '12:00 以後才上班', color: '#f97316', test: a => a >= 12 },
-  { code: '彈', name: '彈性班', rule: '其他時間', color: '#10b981', test: () => true },
-];
-function shiftOf(segs) {
-  const a = segs[0][0], b = segs[segs.length - 1][1];
-  return SHIFT_TYPES.find(t => t.test(a, b));
-}
-function renderShift(dates) {
-  const names = knownNames(), info = dates.map(d => ({ changed: changedPeople(d), leaves: leavesOn(dateStr(d)), cnt: {} }));
-  let h = '<div class="sf-legend">' + SHIFT_TYPES.map(t => '<span class="sf-key"><i class="sf-code" style="background:' + t.color + '">' + t.code + '</i><b>' + t.name + '</b><small>' + t.rule + '</small></span>').join('') +
-    '<span class="sf-key"><i class="sf-code ovr-demo">早</i><small>虛線框＝臨時調整</small></span></div>';
-  h += '<div class="rs-scroll"><table class="rs sf"><thead><tr><th class="rs-who">人員</th>' + rosterHead(dates) + '</tr></thead><tbody>';
-  names.forEach(n => {
-    h += '<tr class="' + dimCls(n).trim() + '"><th class="rs-who sf-who"><i style="background:' + personColor(n).border + '"></i>' + esc(n) + '</th>';
-    dates.forEach((d, di) => {
-      const r = personDay(n, d), ovr = info[di].changed[n], lv = info[di].leaves.find(l => l.name === n);
-      const click = r.segs.length ? 'openEdit(\'h' + pad2(r.segs[0][0]) + '\',' + di + ')' : 'openHourPicker(' + di + ')';
-      let inner;
-      if (!r.segs.length) inner = lv ? leaveTag(lv) : '<span class="rs-none' + (ovr ? ' ovr' : '') + '">—</span>';
-      else {
-        const t = shiftOf(r.segs);
-        info[di].cnt[t.code] = (info[di].cnt[t.code] || 0) + 1;
-        const times = r.segs.map(segTxt).join(' ');
-        inner = '<span class="sf-cell' + (t.calm ? ' calm' : '') + (ovr ? ' ovr' : '') + '" style="--c:' + t.color + '"><i class="sf-code" style="background:' + t.color + '">' + t.code + '</i><span class="sf-t">' + times + '</span></span>' +
-          (r.notes.length ? '<span class="rs-note" title="' + esc(r.notes.join('、')) + '">' + esc(r.notes.join('、')) + '</span>' : '') +
-          (t.calm ? '' : '<span class="rs-mini">' + r.segs.map(s => '<i style="left:' + ((s[0] - FIRST_HOUR) / TIME_SLOTS.length * 100) + '%;width:' + ((s[1] - s[0]) / TIME_SLOTS.length * 100) + '%;background:' + t.color + '"></i>').join('') + '</span>') +
-          (lv ? leaveTag(lv) : '');
-      }
-      h += '<td class="' + (isToday(d) ? 'today' : '') + (r.segs.length ? '' : ' off') + '" onclick="' + click + '"' + (ovr ? ' title="' + esc(tmplNote(n, d)) + '"' : '') + '>' + inner + '</td>';
-    });
-    h += '</tr>';
-  });
-  h += '</tbody><tfoot><tr><th class="rs-who">班別人數</th>' + info.map((x, i) => '<td class="' + (isToday(dates[i]) ? 'today' : '') + '">' +
-    (SHIFT_TYPES.filter(t => x.cnt[t.code]).map(t => '<span class="sf-sum" style="color:' + t.color + '">' + t.code + ' <b>' + x.cnt[t.code] + '</b></span>').join('') || '—') + '</td>').join('') + '</tr></tfoot></table></div>';
-  return h;
-}
 
 /* ─── 🏖️ 請假：這週每天誰請假（Connecteam＋網頁請假），今天放最前面另外列 ─── */
 function leavesOn(ds) {
@@ -1542,8 +1314,7 @@ function leaveRowsHTML(list) {
 function renderLeaveView(dates) {
   const weekCount = dates.reduce((n, d) => n + leavesOn(dateStr(d)).length, 0);
   const ti = dates.findIndex(isToday);
-  let h = '<div class="lv-summary">本週共 <b>' + weekCount + '</b> 人次請假' +
-    '</div>';
+  let h = '<div class="lv-summary">本週共 <b>' + weekCount + '</b> 人次請假</div>';
   if (ti >= 0) {
     const today = leavesOn(dateStr(dates[ti]));
     h += '<div class="lv-today"><div class="lv-today-hd">今天 ' + dayLabel(dates[ti]) + '　' + (today.length ? today.length + ' 人請假' : '沒有人請假') + '</div>' +
