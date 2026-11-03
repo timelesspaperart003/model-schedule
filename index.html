@@ -70,30 +70,59 @@
   .mk { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
   .mk.ovr { background: var(--accent); } .mk.pend { background: var(--warn); }
 
-  /* ─── A 時間軸：每天一欄，同一人連續的小時合併成一條色塊 ─── */
-  .tl { display: grid; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; }
-  .tl.week { min-width: 940px; }
-  .tl-dh { text-align: center; padding: 10px 4px; font-weight: 700; font-size: 14px; background: var(--surface-2); border-bottom: 2px solid var(--border-light); border-right: 1px solid var(--border); }
-  .tl-dh small { display: block; font-weight: 500; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
-  .tl-dh.today { background: var(--primary-soft); }
-  .tl-axis { position: relative; background: var(--surface-2); border-right: 2px solid var(--border); }
-  .tl-axis span { position: absolute; left: 0; right: 4px; text-align: right; font-size: 10px; font-weight: 600; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; padding-top: 2px; }
-  .tl-col { position: relative; border-right: 1px solid var(--border); }
-  .tl-col { background: var(--surface-2); }
-  .tl-col.today { background: #f5f7ff; }
-  .tl-hr { position: absolute; left: 0; right: 0; border-bottom: 1px solid #eceef1; cursor: pointer; }
-  .tl-hr:hover { background: rgba(79,70,229,.05); }
-  .tl-hr .mk { position: absolute; right: 2px; top: 3px; width: 7px; height: 7px; }
-  .tl-bar { position: absolute; border-radius: 6px; border: none; border-left: 4px solid; background: #fff; padding: 3px 6px; font-size: 12px; line-height: 1.3; overflow: hidden; cursor: pointer; box-shadow: 0 1px 3px rgba(17,24,39,.14); z-index: 1; }
-  .tl-bar:hover { box-shadow: 0 3px 8px rgba(17,24,39,.18); }
-  .tl-bar b { display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tl-bar small { display: block; font-size: 10px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tl-bar small.t { font-family: 'JetBrains Mono', monospace; }
-  .tl-bar.compact { padding: 3px 1px; border-left-width: 3px; text-align: center; }
-  .tl-bar.compact b { font-size: 11px; text-overflow: clip; }
-  .tl-bar.dimmed { opacity: .12; pointer-events: none; }
-  .tl-now { position: absolute; left: 0; right: 0; height: 2px; background: #d9534f; z-index: 2; pointer-events: none; }
-  .tl-now::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #d9534f; }
+  /* ─── 📊 時間軸（出勤一覽）：每天下面固定一排人名，淺綠＝上班、紅＝請假／臨時取消 ─── */
+  .at-tools { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; margin-bottom: 10px; }
+  .at-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 3px; }
+  .at-seg button { border: none; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--text-muted); padding: 5px 12px; border-radius: 16px; cursor: pointer; white-space: nowrap; }
+  .at-seg button:hover { background: var(--surface-3); }
+  .at-seg button.today { color: var(--primary); }
+  .at-seg button.on { background: var(--text); color: #fff; }
+  .at-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); margin-left: auto; }
+  .at-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .at-sw { width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; font-style: normal; }
+  .at-sw.on { background: #bbf7d0; border-color: #86efac; }
+  .at-sw.add { background: repeating-linear-gradient(135deg, #bbf7d0 0 4px, #86efac 4px 8px); border-color: #4ade80; }
+  .at-sw.leave { background: #ef4444; border-color: #ef4444; color: #fff; }
+  .at-sw.cut { background: #fee2e2; border-color: #fecaca; color: #ef4444; }
+  .at-scroll { overflow: auto; max-height: calc(100vh - 210px); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+  .at { border-collapse: separate; border-spacing: 0; width: 100%; }
+  .at th, .at td { padding: 0; }
+  .at-days th { position: sticky; top: 0; z-index: 12; background: var(--surface-2); height: 46px; font-size: 14px; border-bottom: 1px solid var(--border); border-left: 2px solid var(--border-light); cursor: pointer; }
+  .at.day .at-days th { cursor: default; }
+  .at-days th small { display: block; font-weight: 500; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .at-days th.today { background: var(--primary-soft); color: var(--primary-text); }
+  .at-cnt { font-size: 11px; font-weight: 600; color: #166534; background: #dcfce7; padding: 0 6px; border-radius: 8px; margin-left: 4px; }
+  .at-cnt.bad { color: #b91c1c; background: #fee2e2; }
+  .at-cnt.pend { color: #fff; background: var(--warn); }
+  .at-names th { position: sticky; top: 46px; z-index: 11; background: var(--surface); border-bottom: 2px solid var(--border-light); padding: 6px 1px; vertical-align: bottom; cursor: pointer; }
+  .at-names th.first { border-left: 2px solid var(--border-light); }
+  .at-nm { display: inline-block; writing-mode: vertical-rl; text-orientation: mixed; font-size: 12px; font-weight: 700; padding: 6px 2px; border-radius: 5px; line-height: 1; letter-spacing: 1px; max-height: 72px; }
+  .at.day .at-nm { writing-mode: horizontal-tb; letter-spacing: 0; padding: 5px 9px; font-size: 13px; max-height: none; white-space: nowrap; }
+  .at-corner { position: sticky; left: 0; z-index: 14 !important; background: var(--surface-2) !important; width: 52px; min-width: 52px; border-left: none !important; }
+  .at-names .at-corner { background: var(--surface) !important; z-index: 13 !important; }
+  .at-time { position: sticky; left: 0; z-index: 5; background: var(--surface); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); text-align: right; padding: 0 8px 0 4px !important; border-right: 1px solid var(--border); vertical-align: top; height: 32px; }
+  .at-c { height: 32px; min-width: 20px; border-bottom: 1px solid #f0f1f3; position: relative; cursor: pointer; }
+  .at-c.first { border-left: 2px solid var(--border-light); }
+  .at-c.today { background: #fafaff; }
+  .at.day .at-c { min-width: 70px; }
+  .at tbody tr:hover .at-c { background: #f5f7ff; }
+  .at .colhl { background: var(--primary-soft) !important; }
+  .at .dimmed { opacity: .18; }
+  /* 連續的小時連成一條（往下多蓋 1px 蓋掉格線），開頭／結尾圓角，時間寫在開頭 */
+  .at-bar { position: absolute; left: 2px; right: 2px; top: 0; bottom: -1px; z-index: 1; display: flex; align-items: flex-start; justify-content: center; overflow: hidden; background: #bbf7d0; color: #166534; }
+  .at-bar.add { background: repeating-linear-gradient(135deg, #bbf7d0 0 6px, #86efac 6px 12px); }
+  .at-bar.leave { background: #ef4444; color: #fff; }
+  .at-bar.cut { background: #fee2e2; color: #b91c1c; }
+  .at-bar.s { top: 3px; border-top-left-radius: 7px; border-top-right-radius: 7px; z-index: 2; overflow: visible; }
+  .at-bar.e { bottom: 3px; border-bottom-left-radius: 7px; border-bottom-right-radius: 7px; }
+  .at-lbl { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; white-space: nowrap; padding-top: 4px; writing-mode: vertical-rl; letter-spacing: .5px; }
+  .at.day .at-lbl { writing-mode: horizontal-tb; font-size: 12px; padding: 6px 3px 0; letter-spacing: 0; white-space: normal; text-align: center; line-height: 1.35; }
+  .at.day .at-bar.s { overflow: visible; overflow-x: clip; }
+  .at-now { position: absolute; left: 0; right: 0; height: 2px; background: #ef4444; z-index: 3; pointer-events: none; }
+  .at tfoot td { position: sticky; bottom: 0; background: var(--surface-2); border-top: 2px solid var(--border-light); height: 34px; font-size: 12px; font-weight: 700; text-align: center; z-index: 4; }
+  .at tfoot td.first { border-left: 2px solid var(--border-light); }
+  .at tfoot td.at-time { z-index: 6; font-family: inherit; text-align: center; padding: 0 !important; vertical-align: middle; }
+  .at tfoot .ok { color: #16a34a; } .at tfoot .bad { color: #ef4444; } .at tfoot .no { color: var(--text-dim); }
 
   /* ─── E 卡片：一天一張 ─── */
   /* 電腦：一行七天（太窄就左右捲動）；手機：一天一張往下排（見 @media） */
@@ -324,12 +353,6 @@
   .review-edit-link { display: block; margin: 12px auto 0; font-size: 12px; color: var(--text-muted); cursor: pointer; border: none; background: none; font-family: inherit; text-decoration: underline; }
 
   /* ─── 手機：時間軸改成一次看一天 ─── */
-  .mobile-day-tabs { display: flex; gap: 4px; overflow-x: auto; margin-bottom: 12px; scrollbar-width: none; }
-  .mobile-day-tabs::-webkit-scrollbar { display: none; }
-  .mobile-day-tab { padding: 5px 10px; border-radius: 20px; font-size: 13px; background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary); cursor: pointer; text-align: center; min-width: 46px; flex-shrink: 0; }
-  .mobile-day-tab.active { background: var(--text); color: #fff; border-color: var(--text); }
-  .mobile-day-tab.is-today { border-color: var(--primary); }
-  .mobile-day-tab .tab-day { font-weight: 600; } .mobile-day-tab .tab-date { font-size: 10px; opacity: .7; }
 
   /* ─── 批量排班（整月月曆） ─── */
   .batch-overlay { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 900; flex-direction: column; }
@@ -456,7 +479,7 @@
   <div class="notes-section">
     <div class="notes-title">📋 使用說明</div>
     <div class="notes-content">
-      上方可切換版面（試用中）：「📊 時間軸」直向、「👥 人員表」一列一人、「📶 人員表＋時間條」多一條小時間條、「↔️ 橫向時間軸」日期在左時間在上、「🗂️ 卡片」、「🏖️ 請假」。點格子／色塊就能編輯那天；人員表的紫框＝跟固定班表不一樣（臨時調整）。<br>
+      上方可切換版面（試用中）：「📊 時間軸」每天下面固定一排人名，淺綠＝有上班（上面寫時間和時數）、紅＝請假／臨時取消，可切整週或放大單日、「👥 人員表」一列一人、「📶 人員表＋時間條」多一條小時間條、「↔️ 橫向時間軸」日期在左時間在上、「🗂️ 卡片」、「🏖️ 請假」。點格子／色塊就能編輯那天；人員表的紫框＝跟固定班表不一樣（臨時調整）。<br>
       儲存時選「僅這週」只改那一天，選「這天之後的所有週」會改固定班表（之前的週次保留原樣）。要一次排一整段時間或很多天，用「🗓️ 批量排班」；每週固定的人員（例如每週一三五 08–12），用批量排班裡的「📌 固定班表（每週）」一次設定。<br>
       admin 用右上角 Google 登入後，修改直接生效；員工選自己的名字送出，會變成「待審核」，由 admin 在「📋 記錄」批准或拒絕。<br>
       點上方人名可只看那些人的班（可多選，再點一次取消，按「✕ 全部」清除）；按「⇅ 排序」可調整人員順序。<br>
@@ -720,7 +743,6 @@ let leaveReqs = [], settings = {};   // 待審核的請假申請；後端設定�
 let leaves = [];   // 「🏖️ 請假」檢視用：Connecteam＋網頁請假（已核准、待審核）
 let currentWeekOffset = 0, filterPeople = {};   // 上方人名可多選：選了的人正常顯示，其他人變淡；都沒選＝全部正常
 let editingCell = null, editingDateKey = null;
-let mobileDay = 0, mobileDayUserSelected = false;
 const isMobile = () => window.innerWidth <= 768;
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -892,8 +914,8 @@ function currentOf(dk) { return overrides[dk] || tmplAt(keyParts(dk).tk, dk.slic
 
 function updateWeekLabel() { const d = getWeekDates(currentWeekOffset), f = x => (x.getMonth() + 1) + '/' + x.getDate(); document.getElementById('weekLabel').textContent = d[0].getFullYear() + ' ' + f(d[0]) + ' — ' + f(d[6]); }
 function updateTodayBtn() { document.getElementById('btnToday').classList.toggle('is-current-week', currentWeekOffset === 0); }
-function changeWeek(dir) { currentWeekOffset += dir; mobileDayUserSelected = false; renderAll(); }
-function goToday() { if (currentWeekOffset === 0) return; currentWeekOffset = 0; mobileDayUserSelected = false; renderAll(); }
+function changeWeek(dir) { currentWeekOffset += dir; renderAll(); }
+function goToday() { if (currentWeekOffset === 0) return; currentWeekOffset = 0; tlDay = null; renderAll(); }
 
 /* ─── 人員顏色 ─── */
 // 每個人先照名字算一個「偏好色」，被別人用走就往下一個找空的，所以班表上的人顏色一定不重複；
@@ -929,35 +951,6 @@ function daySegments(date) {
     Object.keys(open).forEach(n => { if (!here[n]) delete open[n]; });
   });
   return segs;
-}
-
-// 時間重疊的色塊才分欄：先把彼此重疊的時段分成一群，每群各自算要幾欄（沒重疊的色塊佔滿整欄）
-// 群內照「人員排序」由左到右放：排前面的人先挑最左邊、時間沒衝突的欄
-function layoutLanes(segs) {
-  const sorted = segs.slice().sort((a, b) => a.start - b.start || b.end - a.end);
-  const hit = (a, b) => a.start < b.end && b.start < a.end;
-  let group = [], groupEnd = -1;
-  const flush = () => {
-    const lanes = [];
-    group.slice().sort((a, b) => orderIdx(a.name) - orderIdx(b.name) || a.start - b.start).forEach(s => {
-      let l = lanes.findIndex(L => !L.some(o => hit(o, s)));
-      if (l < 0) { l = lanes.length; lanes.push([]); }
-      lanes[l].push(s); s.lane = l;
-    });
-    // 每個色塊再往右延伸，佔掉右邊同時段沒人用的欄位（不會被擠成一小條）
-    group.forEach(s => {
-      s.lanes = lanes.length; s.span = 1;
-      for (let k = s.lane + 1; k < lanes.length && !lanes[k].some(o => hit(o, s)); k++) s.span++;
-    });
-    group = [];
-  };
-  sorted.forEach(s => {
-    if (s.start >= groupEnd) flush();
-    group.push(s);
-    groupEnd = Math.max(groupEnd, s.end);
-  });
-  flush();
-  return sorted;
 }
 
 function segTime(s) { return pad2(s.start) + ':00–' + pad2(s.end) + ':00'; }
@@ -1007,62 +1000,100 @@ function renderView() {
   else if (viewMode === 'roster' || viewMode === 'rosterBar') h = renderRoster(dates, viewMode === 'rosterBar');
   else if (viewMode === 'hz') h = renderHz(dates);
   else if (viewMode === 'shift') h = renderShift(dates);
-  else if (isMobile()) {
-    if (!mobileDayUserSelected) { const ti = dates.findIndex(isToday); mobileDay = ti >= 0 ? ti : 0; }
-    h = '<div class="mobile-day-tabs">' + dates.map((date, i) =>
-      '<div class="mobile-day-tab' + (mobileDay === i ? ' active' : '') + (isToday(date) ? ' is-today' : '') + '" onclick="selectMobileDay(' + i + ')">' +
-      '<div class="tab-day">' + DAYS[i] + '</div><div class="tab-date">' + (date.getMonth() + 1) + '/' + date.getDate() + '</div></div>').join('') + '</div>';
-    h += renderTimeline(dates, [mobileDay]);
-  } else h = renderTimeline(dates, [0, 1, 2, 3, 4, 5, 6]);
+  else h = renderAttend(dates);
   document.getElementById('scheduleView').innerHTML = h;
-}
-function selectMobileDay(i) { mobileDay = i; mobileDayUserSelected = true; renderView(); }
-
-/* ─── A 時間軸 ─── */
-const HOUR_PX = 40, FIRST_HOUR = TIME_SLOTS[0].hour;
-function renderTimeline(dates, idxs) {
-  const total = TIME_SLOTS.length * HOUR_PX;
-  let h = '<div class="tl' + (idxs.length > 1 ? ' week' : '') + '" style="grid-template-columns:50px repeat(' + idxs.length + ',minmax(0,1fr))"><div class="tl-dh"></div>';
-  idxs.forEach(di => {
-    const d = dates[di], t = isToday(d);
-    h += '<div class="tl-dh' + (t ? ' today' : '') + '">週' + DAYS[di] + (t ? '<span class="today-badge">TODAY</span>' : '') + '<small>' + (d.getMonth() + 1) + '/' + d.getDate() + '</small></div>';
-  });
-  h += '<div class="tl-axis" style="height:' + total + 'px">' + TIME_SLOTS.map((s, i) => '<span style="top:' + i * HOUR_PX + 'px">' + s.label + '</span>').join('') + '</div>';
-  idxs.forEach(di => {
-    const date = dates[di];
-    h += '<div class="tl-col' + (isToday(date) ? ' today' : '') + '" style="height:' + total + 'px">';
-    // 底層：每小時一格，點了就編輯那個小時
-    TIME_SLOTS.forEach((slot, i) => {
-      const mk = hourMark(date, slot), diff = mk === 'ovr' ? cellDiff(slot.id, date) : [], lvTxt = diffLeaveText(diff);
-      const tip = dayLabel(date) + ' ' + slotText(slot.id) + (lvTxt ? ' ' + lvTxt : '') + (diff.length ? '\n跟固定班表比：\n' + diff.map(d => d.text).join('\n') : '');
-      h += '<div class="tl-hr" style="top:' + i * HOUR_PX + 'px;height:' + HOUR_PX + 'px" title="' + esc(tip) + '" onclick="openEdit(\'' + slot.id + '\',' + di + ')">' +
-        (mk ? '<i class="mk ' + mk + '"></i>' : '') + '</div>';
-    });
-    // 上層：人員色塊（右邊留 10px 給臨時調整／待審核的小圓點）
-    layoutLanes(daySegments(date)).forEach(s => {
-      // 色塊太窄（約小於 55px）就只顯示名字，時間看滑鼠提示；一週七欄每欄約 160px，手機單日約 400px
-      const c = personColor(s.name), many = (idxs.length > 1 ? 160 : 400) * s.span / s.lanes < 55;
-      const tip = s.name + ' ' + segTime(s) + (s.notes.length ? '（' + s.notes.join('、') + '）' : '');
-      h += '<div class="tl-bar' + (many ? ' compact' : '') + dimCls(s.name) + '" title="' + esc(tip) + '" onclick="timelineBarClick(event,' + di + ',' + s.start + ',' + s.end + ')" style="' +
-        'top:' + ((s.start - FIRST_HOUR) * HOUR_PX + 2) + 'px;height:' + ((s.end - s.start) * HOUR_PX - 4) + 'px;' +
-        'left:calc((100% - 12px) * ' + (s.lane / s.lanes).toFixed(4) + ' + 2px);width:calc((100% - 12px) * ' + (s.span / s.lanes).toFixed(4) + ' - 2px);' +
-        'border-color:' + c.border + ';color:' + c.text + '">' +
-        '<b>' + esc(s.name) + '</b>' + (many ? '' : '<small class="t">' + pad2(s.start) + '–' + pad2(s.end) + '</small>' + (s.notes.length ? '<small>' + esc(s.notes.join('、')) + '</small>' : '')) + '</div>';
-    });
-    if (isToday(date)) {
-      const now = new Date(), nh = now.getHours() + now.getMinutes() / 60;
-      if (nh >= FIRST_HOUR && nh <= FIRST_HOUR + TIME_SLOTS.length) h += '<div class="tl-now" style="top:' + ((nh - FIRST_HOUR) * HOUR_PX - 1) + 'px"></div>';
-    }
-    h += '</div>';
-  });
-  return h + '</div>';
+  bindAttendHover();
 }
 
-// 點色塊：依點的位置換算成那個小時，打開那個小時的編輯
-function timelineBarClick(ev, di, start, end) {
-  const r = ev.currentTarget.getBoundingClientRect();
-  const hr = Math.max(start, Math.min(end - 1, start + Math.floor((ev.clientY - r.top + 2) / HOUR_PX)));
-  openEdit('h' + pad2(hr), di);
+/* ─── 📊 時間軸（出勤一覽）：每天下面固定一排人名（照排序），往下看那一欄就知道那個人幾點在 ───
+ * 淺綠＝有上班（連成一條，上面寫「8–17 (9h)」）、斜紋＝臨時加的班、實心紅＝請假、淡紅＝臨時取消（原本固定班卻沒來）、空白＝沒排班
+ * 上方可切「整週」或放大單日；電腦預設整週、手機預設今天 */
+const FIRST_HOUR = TIME_SLOTS[0].hour;
+let tlDay = null;   // null＝自動；'week'＝整週；0–6＝放大那一天
+function setTlDay(v) { tlDay = v; renderView(); }
+// 某人某天每小時的狀態：on 有上班／add 臨時加的班／leave 請假／cut 臨時取消／'' 沒排
+function attendStates(name, date) {
+  const ds = dateStr(date), lv = leaves.find(l => l.name === name && l.from <= ds && ds <= l.to);
+  return TIME_SLOTS.map(slot => {
+    const e = people(getCell(slot.id, date).data).find(p => p.name === name);
+    const t = people(tmplAt(slot.id + '-' + DAYS[dayIdx(date)], ds)).some(p => p.name === name);
+    if (e) return { s: t ? 'on' : 'add', note: e.note || '' };
+    if (t) return { s: lv ? 'leave' : 'cut' };
+    return { s: '' };
+  });
+}
+const isWork = s => s === 'on' || s === 'add';
+const isMiss = s => s === 'leave' || s === 'cut';
+// 連續上班的段落文字：'8–17 (9h)'；有兩段就 '8–9 (1h)、10–21 (11h)'
+function workText(st) {
+  const out = []; let a = -1;
+  st.forEach((x, i) => {
+    if (isWork(x.s) && a < 0) a = i;
+    if (a >= 0 && (!isWork(x.s) || i === st.length - 1)) { const b = isWork(x.s) ? i + 1 : i; out.push((FIRST_HOUR + a) + '–' + (FIRST_HOUR + b) + ' (' + (b - a) + 'h)'); a = -1; }
+  });
+  return out.join('、');
+}
+function renderAttend(all) {
+  const ti = all.findIndex(isToday), mode = tlDay !== null ? tlDay : (isMobile() ? (ti >= 0 ? ti : 0) : 'week');
+  const week = mode === 'week', idxs = week ? [0, 1, 2, 3, 4, 5, 6] : [mode], names = knownNames(), N = names.length;
+  const S = idxs.map(di => names.map(n => attendStates(n, all[di])));
+  let h = '<div class="at-tools"><div class="at-seg"><button class="' + (week ? 'on' : '') + '" onclick="setTlDay(\'week\')">整週</button>' +
+    all.map((d, i) => '<button class="' + (mode === i ? 'on' : '') + (isToday(d) ? ' today' : '') + '" onclick="setTlDay(' + i + ')">' + DAYS[i] + ' ' + (d.getMonth() + 1) + '/' + d.getDate() + '</button>').join('') + '</div>' +
+    '<div class="at-legend"><span><i class="at-sw on"></i>有上班</span><span><i class="at-sw add"></i>臨時加的班</span><span><i class="at-sw leave">✗</i>請假</span><span><i class="at-sw cut">✗</i>臨時取消</span><span><i class="at-sw"></i>沒排班</span></div></div>';
+  h += '<div class="at-scroll"><table class="at' + (week ? '' : ' day') + '"><thead><tr class="at-days"><th class="at-corner"></th>';
+  idxs.forEach((di, k) => {
+    const d = all[di], present = S[k].filter(st => st.some(x => isWork(x.s))).length, absent = S[k].filter(st => st.some(x => isMiss(x.s))).length, pc = pendCount(d);
+    h += '<th colspan="' + N + '" class="' + (isToday(d) ? 'today' : '') + '"' + (week ? ' onclick="setTlDay(' + di + ')" title="放大看這天"' : '') + '>週' + DAYS[di] +
+      (isToday(d) ? '<span class="today-badge">今天</span>' : '') + ' <span class="at-cnt">' + present + ' 人</span>' + (absent ? '<span class="at-cnt bad">' + absent + ' 請假</span>' : '') +
+      (pc ? '<span class="at-cnt pend">待審核 ' + pc + '</span>' : '') + '<small>' + (d.getMonth() + 1) + '/' + d.getDate() + '</small></th>';
+  });
+  h += '</tr><tr class="at-names"><th class="at-corner"></th>';
+  idxs.forEach((di, k) => names.forEach((n, pi) => {
+    const c = personColor(n), wt = workText(S[k][pi]);
+    h += '<th class="' + (pi ? '' : 'first') + dimCls(n) + '" data-col="' + k + '-' + pi + '" title="' + esc(n + (wt ? ' ' + wt : ' 沒排班')) + '" onclick="toggleFilter(this.dataset.name)" data-name="' + esc(n) + '">' +
+      '<span class="at-nm" style="background:' + c.bg + ';color:' + c.text + ';box-shadow:inset 0 -2px 0 ' + c.border + '">' + esc(n) + '</span></th>';
+  }));
+  h += '</tr></thead><tbody>';
+  TIME_SLOTS.forEach((slot, hi) => {
+    h += '<tr><td class="at-time">' + slot.label + '</td>';
+    idxs.forEach((di, k) => {
+      const d = all[di], diff = hourMark(d, slot) === 'pend' ? '\n（這個小時有待審核的修改）' : '';
+      names.forEach((n, pi) => {
+        const st = S[k][pi], x = st[hi], pv = (st[hi - 1] || {}).s, nx = (st[hi + 1] || {}).s;
+        let inner = '', tip = n + ' ' + slot.label + '–' + slot.time + ' ';
+        if (isWork(x.s)) {
+          const s = !isWork(pv), e = !isWork(nx);
+          let lbl = '';
+          // 時間寫在開頭那格；整週是直排，班太短（2 小時以下）放不下就只寫「8–9」
+          if (s) { let b = hi; while (isWork((st[b + 1] || {}).s)) b++; const len = b + 1 - hi; lbl = (FIRST_HOUR + hi) + '–' + (FIRST_HOUR + b + 1) + (week && len <= 2 ? '' : ' (' + len + 'h)'); }
+          inner = '<div class="at-bar' + (x.s === 'add' ? ' add' : '') + (s ? ' s' : '') + (e ? ' e' : '') + '">' + (lbl ? '<span class="at-lbl">' + lbl + '</span>' : '') + '</div>';
+          tip += x.s === 'add' ? '有上班（臨時加的班）' : '有上班'; if (x.note) tip += '｜' + x.note;
+        } else if (isMiss(x.s)) {
+          const s = pv !== x.s, e = nx !== x.s;
+          inner = '<div class="at-bar ' + x.s + (s ? ' s' : '') + (e ? ' e' : '') + '">' + (s ? '<span class="at-lbl">✗' + (week ? '' : ' ' + (x.s === 'leave' ? '請假' : '臨時取消')) + '</span>' : '') + '</div>';
+          tip += x.s === 'leave' ? '請假（原本是固定班）' : '臨時取消（原本是固定班）';
+        } else tip += '沒排班';
+        let now = '';
+        if (isToday(d)) { const t = new Date(), f = t.getHours() + t.getMinutes() / 60; if (f >= slot.hour && f < slot.hour + 1) now = '<div class="at-now" style="top:' + ((f - slot.hour) * 100) + '%"></div>'; }
+        h += '<td class="at-c' + (pi ? '' : ' first') + (isToday(d) ? ' today' : '') + dimCls(n) + '" data-col="' + k + '-' + pi + '" title="' + esc(tip + diff) + '" onclick="openEdit(\'' + slot.id + '\',' + di + ')">' + inner + now + '</td>';
+      });
+    });
+    h += '</tr>';
+  });
+  h += '</tbody><tfoot><tr><td class="at-time">在班</td>';
+  idxs.forEach((di, k) => names.forEach((n, pi) => {
+    const st = S[k][pi];
+    h += '<td class="' + (pi ? '' : 'first') + dimCls(n) + '" data-col="' + k + '-' + pi + '">' + (st.some(x => isWork(x.s)) ? '<span class="ok">✓</span>' : st.some(x => isMiss(x.s)) ? '<span class="bad">✗</span>' : '<span class="no">·</span>') + '</td>';
+  }));
+  return h + '</tr></tfoot></table></div>';
+}
+// 滑鼠移到格子：那個人整欄淡淡標出來（整列用 CSS :hover）
+function bindAttendHover() {
+  const tb = document.querySelector('#scheduleView table.at');
+  if (!tb) return;
+  const clear = () => tb.querySelectorAll('.colhl').forEach(x => x.classList.remove('colhl'));
+  tb.onmouseover = e => { const c = e.target.closest('[data-col]'); clear(); if (c) tb.querySelectorAll('[data-col="' + c.dataset.col + '"]').forEach(x => x.classList.add('colhl')); };
+  tb.onmouseleave = clear;
 }
 
 /* ─── E 卡片 ─── */
