@@ -327,6 +327,8 @@
   /* 人員設定 */
   .ss-modal { width: 820px; max-width: 96vw; }
   .ss-list { max-height: 55vh; overflow-y: auto; }
+  .ss-del { margin-left: auto; border: none; background: transparent; color: var(--text-muted); font-size: 12px; cursor: pointer; padding: 2px 5px; border-radius: 6px; }
+  .ss-del:hover { background: #fee2e2; color: #b91c1c; }
   .ss-depts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--text-muted); padding: 0 0 2px 86px; }
   .ss-depts label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
   .ss-row { display: grid; grid-template-columns: 80px minmax(0, 1.4fr) 88px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
@@ -346,8 +348,13 @@
   .order-row { display: flex; align-items: center; gap: 8px; padding: 5px 4px; border-bottom: 1px solid var(--border); font-size: 13px; }
   .order-row .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .order-row .nm { flex: 1; }
-  .order-row button { border: 1px solid var(--border); background: var(--surface-2); border-radius: 6px; width: 30px; height: 26px; cursor: pointer; font-size: 11px; }
-  .order-row button:disabled { opacity: .3; cursor: default; }
+  .od-grip { flex: none; width: 28px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--text-muted); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; border-radius: 6px; }
+  .od-grip:hover { background: var(--surface-2); }
+  .od-no { flex: none; width: 52px; height: 30px; text-align: center; font: inherit; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: inherit; padding: 0 2px; }
+  .order-row.dragging { opacity: .45; }
+  .order-row.drop-before { box-shadow: inset 0 2px 0 var(--primary, #4f46e5); }
+  .order-row.drop-after { box-shadow: inset 0 -2px 0 var(--primary, #4f46e5); }
+  .order-row.flash { background: #eef2ff; }
   .log-key { font-size: 12px; font-weight: 600; background: var(--surface-2); padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border); }
   .log-compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
   .log-box { padding: 8px 10px; border-radius: var(--radius-xs); border: 1px solid var(--border); font-size: 12px; line-height: 1.6; background: var(--surface); }
@@ -631,7 +638,7 @@
 <div class="scope-overlay" id="orderModal">
   <div class="scope-modal">
     <div class="scope-title">⇅ 人員排序</div>
-    <div class="scope-desc">用 ▲▼ 調整順序。時間軸由左到右、卡片由上到下、上方人名都照這個順序。</div>
+    <div class="scope-desc">按住 <b>⠿</b> 拖曳，或直接改<b>序號</b>（改成 1 就排到最前面）。時間軸由左到右、卡片由上到下、上方人名都照這個順序。</div>
     <div class="order-list" id="orderList"></div>
     <div class="scope-pw-row">
       <button class="scope-pw-confirm" style="flex:1" onclick="confirmOrder()">儲存</button>
@@ -1164,7 +1171,8 @@ function renderAttend(all) {
   const ti = all.findIndex(isToday), mode = tlDay !== null ? tlDay : (isMobile() ? (ti >= 0 ? ti : 0) : 'week');
   const week = mode === 'week', idxs = week ? [0, 1, 2, 3, 4, 5, 6] : [mode];
   // 全公司人多：只列這週有班的人（沒班只請假的人看「🏖️ 請假」）；各部門固定列出部門全部的人
-  let names = knownNames().filter(inDept);
+  // 已刪除的人只在看到他過去的班時才出現
+  let names = knownNames(null, true).filter(inDept).filter(n => !isGone(n) || all.some(d => attendStates(n, d).some(x => x.s)));
   if (deptTab === '全公司') names = names.filter(n => all.some(d => attendStates(n, d).some(x => x.s)));
   if (!names.length) return '<div class="dept-empty">' + (deptTab === '全公司' ? '這週沒有人排班' : '「' + esc(deptTab) + '」還沒有人，請到「👤 人員設定」指定部門') + '</div>';
   const N = names.length;
@@ -1316,7 +1324,7 @@ function openStaffSetup() {
   const staff = settings.staff || {}, names = [...new Set(knownNames().concat(Object.keys(staff)))];
   document.getElementById('ssList').innerHTML = names.map(n => {
     const s = staff[n] || {};
-    return '<div class="ss-row" data-name="' + esc(n) + '"><span class="ss-nm"><i style="background:' + personColor(n).border + '"></i>' + esc(n) + '</span>' +
+    return '<div class="ss-row" data-name="' + esc(n) + '"><span class="ss-nm"><i style="background:' + personColor(n).border + '"></i>' + esc(n) + '<button type="button" class="ss-del" title="刪除這個人" onclick="deleteStaff(this)">✕</button></span>' +
       '<input class="form-input ss-email" type="email" placeholder="' + (s.type === '承攬' ? '承攬制用帳號密碼登入' : 'Gmail（例：abc@gmail.com）') + '" value="' + (s.type === '承攬' ? '' : esc(s.email || '')) + '"' + (s.type === '承攬' ? ' disabled' : '') + ' autocomplete="off">' +
       '<select class="form-input ss-type" onchange="ssTypeChanged(this)"><option value="正職"' + (s.type !== '承攬' ? ' selected' : '') + '>正職</option><option value="承攬"' + (s.type === '承攬' ? ' selected' : '') + '>承攬制</option></select>' +
       '<input class="form-input ss-user" placeholder="帳號（選填）" value="' + esc(s.user || '') + '" autocomplete="off">' +
@@ -1325,6 +1333,17 @@ function openStaffSetup() {
   }).join('');
   document.getElementById('ssError').style.display = 'none';
   document.getElementById('staffSetupModal').classList.add('active');
+}
+function deleteStaff(btn) {
+  const row = btn.closest('.ss-row'), name = row.dataset.name, errEl = document.getElementById('ssError');
+  if (!confirm('確定要刪除「' + name + '」嗎？\n\n會從人員設定、排序、部門分頁拿掉，他也不能再登入。過去的班和紀錄會保留。')) return;
+  requireAdmin().then(ok => {
+    if (!ok) return;
+    errEl.style.display = 'none';
+    apiPost({ action: 'deletePerson', name: name }).then(okOrThrow)
+      .then(() => { row.remove(); showToast('已刪除 ' + name); loadData(); })   // 其他列還沒儲存的修改保留
+      .catch(e => { errEl.textContent = '刪除失敗：' + (e.message || '請重試'); errEl.style.display = 'block'; });
+  });
 }
 // 承攬制只能用帳號密碼登入：Gmail 欄清空並鎖住
 function ssTypeChanged(sel) {
@@ -1444,13 +1463,20 @@ function rebuildRanks() { rankMap = {}; knownNames().forEach((n, i) => { rankMap
 function orderIdx(name) { return name in rankMap ? rankMap[name] : 9999; }
 
 /* ─── 人員篩選 ─── */
-function knownNames(extra) {
+// 已刪除的人：過去的班還留著，但今天以後沒有班就不再列出來（之後又排班會自動回來）
+function isGone(name) {
+  if (!(settings.removed || {})[name]) return false;
+  const today = dateStr(new Date());
+  return !Object.keys(overrides).some(k => k.slice(0, 10) >= today && people(overrides[k]).some(p => p.name === name)) &&
+    !Object.keys(scheduleData).some(k => people(scheduleData[k]).some(p => p.name === name));
+}
+function knownNames(extra, withGone) {
   const set = {};
   [scheduleData, overrides, qcCells].concat(extra || []).forEach(src => {
     Object.keys(src).forEach(k => people(src[k]).forEach(p => { if (p.name) set[p.name] = 1; }));
   });
   (settings.companyNames || []).forEach(n => { set[n] = 1; });   // Notion 班表登陸區的全公司名單
-  const names = Object.keys(set);
+  const names = Object.keys(set).filter(n => withGone || !isGone(n));
   return names.sort((a, b) => orderPos(a) - orderPos(b) || names.indexOf(a) - names.indexOf(b));
 }
 
@@ -1473,17 +1499,58 @@ function openOrder() {
 }
 function closeOrder() { document.getElementById('orderModal').classList.remove('active'); }
 let orderDraft = [];
-function renderOrderList() {
-  document.getElementById('orderList').innerHTML = orderDraft.map((n, i) =>
-    '<div class="order-row"><span class="dot" style="background:' + personColor(n).border + '"></span><span class="nm">' + (i + 1) + '. ' + esc(n) + '</span>' +
-    '<button onclick="moveOrder(' + i + ',-1)"' + (i ? '' : ' disabled') + ' title="往前">▲</button>' +
-    '<button onclick="moveOrder(' + i + ',1)"' + (i < orderDraft.length - 1 ? '' : ' disabled') + ' title="往後">▼</button></div>').join('');
+function renderOrderList(flash) {
+  const list = document.getElementById('orderList');
+  list.innerHTML = orderDraft.map((n, i) =>
+    '<div class="order-row' + (n === flash ? ' flash' : '') + '" data-i="' + i + '"><span class="od-grip" title="按住拖曳" onpointerdown="startOrderDrag(event,' + i + ')">⠿</span>' +
+    '<input class="od-no" type="number" inputmode="numeric" min="1" max="' + orderDraft.length + '" value="' + (i + 1) + '" title="輸入新的序號" aria-label="' + esc(n) + ' 的序號" onfocus="this.select()" onchange="setOrderNo(' + i + ',this)" onkeydown="if(event.key===\'Enter\')this.blur()">' +
+    '<span class="dot" style="background:' + personColor(n).border + '"></span><span class="nm">' + esc(n) + '</span></div>').join('');
+  const row = flash != null && list.querySelector('.flash');
+  if (row) row.scrollIntoView({ block: 'nearest' });
 }
-function moveOrder(i, d) {
-  const j = i + d;
-  if (j < 0 || j >= orderDraft.length) return;
-  [orderDraft[i], orderDraft[j]] = [orderDraft[j], orderDraft[i]];
-  renderOrderList();
+function moveOrderTo(from, to) {
+  to = Math.max(0, Math.min(orderDraft.length - 1, to));
+  const name = orderDraft[from];
+  if (from !== to) { orderDraft.splice(from, 1); orderDraft.splice(to, 0, name); }
+  renderOrderList(name);
+}
+// 直接輸入序號：超出範圍就排到最前或最後，不是數字就還原
+function setOrderNo(i, input) {
+  const n = parseInt(input.value, 10);
+  if (isNaN(n)) { input.value = i + 1; return; }
+  moveOrderTo(i, n - 1);
+}
+// 拖曳：滑鼠和手機都用 pointer 事件；拖到清單上下緣會自動捲動
+function startOrderDrag(ev, from) {
+  ev.preventDefault();
+  const list = document.getElementById('orderList');
+  list.querySelector('[data-i="' + from + '"]').classList.add('dragging');
+  let y = ev.clientY, to = from;
+  const mark = () => {
+    const rows = [...list.querySelectorAll('.order-row')];
+    rows.forEach(r => r.classList.remove('drop-before', 'drop-after'));
+    let slot = rows.length;                       // 放在第幾列之前
+    for (let i = 0; i < rows.length; i++) { const b = rows[i].getBoundingClientRect(); if (y < b.top + b.height / 2) { slot = i; break; } }
+    to = slot > from ? slot - 1 : slot;
+    if (to === from) return;
+    if (slot < rows.length) rows[slot].classList.add('drop-before'); else rows[rows.length - 1].classList.add('drop-after');
+  };
+  const onMove = e => { y = e.clientY; mark(); };
+  const timer = setInterval(() => {
+    const b = list.getBoundingClientRect();
+    if (y < b.top + 28) list.scrollTop -= 10; else if (y > b.bottom - 28) list.scrollTop += 10; else return;
+    mark();
+  }, 30);
+  const end = e => {
+    clearInterval(timer);
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', end);
+    document.removeEventListener('pointercancel', end);
+    if (e.type === 'pointerup') moveOrderTo(from, to); else renderOrderList();
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', end);
+  document.addEventListener('pointercancel', end);
 }
 function confirmOrder() {
   requireAdmin().then(name => {
