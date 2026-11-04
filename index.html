@@ -70,6 +70,10 @@
   .view-toggle { display: inline-flex; gap: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px; padding: 3px; }
   .view-btn { border: none; background: transparent; font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text-muted); padding: 4px 12px; border-radius: 16px; cursor: pointer; white-space: nowrap; }
   .view-btn.active { background: var(--text); color: #fff; }
+  .dept-tabs { display: flex; gap: 4px; padding: 10px 16px 0; overflow-x: auto; background: var(--bg, transparent); }
+  .dept-tab { border: 1px solid var(--border); background: #fff; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text-muted); padding: 6px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  .dept-tab.active { background: var(--text); border-color: var(--text); color: #fff; }
+  .dept-empty { padding: 40px 16px; text-align: center; color: var(--text-muted); font-size: 14px; }
   .mk { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
   .mk.ovr { background: var(--accent); } .mk.pend { background: var(--warn); }
 
@@ -323,6 +327,8 @@
   /* 人員設定 */
   .ss-modal { width: 820px; max-width: 96vw; }
   .ss-list { max-height: 55vh; overflow-y: auto; }
+  .ss-depts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--text-muted); padding: 0 0 2px 86px; }
+  .ss-depts label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
   .ss-row { display: grid; grid-template-columns: 80px minmax(0, 1.4fr) 88px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
   .ss-nm { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; } .ss-nm i { width: 8px; height: 8px; border-radius: 50%; }
   .sl-rename-hint { font-size: 13px; color: #6b7280; margin-top: 8px; line-height: 1.5; }
@@ -333,7 +339,7 @@
     .me-day .me-dh { grid-column: 1; grid-row: 1 / span 4; flex-direction: column; align-items: flex-start; gap: 0; }
     .me-day > :not(.me-dh) { grid-column: 2; }
     .me-act { width: 100%; margin-left: 0; }
-    .ss-row { grid-template-columns: 1fr 1fr; } .ss-nm { grid-column: span 2; }
+    .ss-row { grid-template-columns: 1fr 1fr; } .ss-nm { grid-column: span 2; } .ss-depts { padding-left: 0; }
   }
   .auth-box { display: flex; align-items: center; min-height: 32px; }
   .order-list { max-height: 50vh; overflow-y: auto; margin-bottom: 12px; text-align: left; }
@@ -467,6 +473,7 @@
   </div>
 </header>
 <div class="setup-banner" id="setupBanner">⚠️ 尚未設定後端網址：請依「部署說明.md」部署 Google Apps Script，再把網址填進 index.html 的 <code>API_URL</code>。</div>
+<div class="dept-tabs admin-only" id="deptTabs"></div>
 <div class="legend-bar admin-only">
   <div class="view-toggle">
     <button class="view-btn" data-v="timeline" onclick="setView('timeline')" title="原本的直向時間軸">📊 時間軸</button>
@@ -613,7 +620,7 @@
 <div class="scope-overlay" id="staffSetupModal">
   <div class="scope-modal ss-modal" style="text-align:left">
     <div class="scope-title">👤 人員設定</div>
-    <div class="scope-desc">填每個人的 <b>Gmail</b>，他用這個帳號登入就只看得到自己的班。<br><b>正職</b>可以請假；<b>承攬制</b>改成回報「可以接案的日期＋時段」，送出直接排進班表。<br><b>帳號＋密碼</b>：給沒有 Gmail 或共用帳號的人（例如承攬制），他在登入畫面輸入帳號密碼就好。Gmail 和帳號擇一即可。<br>好幾個人<b>共用同一個 Gmail</b> 也可以，登入後會請他選自己的名字。</div>
+    <div class="scope-desc">填每個人的 <b>Gmail</b>，他用這個帳號登入就只看得到自己的班。<br><b>正職</b>可以請假；<b>承攬制</b>改成回報「可以接案的日期＋時段」，送出直接排進班表，而且<b>只能用帳號密碼登入</b>，不能用 Gmail。<br><b>部門</b>可以複選，跨部門的人會出現在每個勾選的分頁。<br><b>帳號＋密碼</b>：承攬制一定要設；正職沒有 Gmail 時也可以用，在登入畫面輸入帳號密碼就好。<br>好幾個人<b>共用同一個 Gmail</b> 也可以，登入後會請他選自己的名字。</div>
     <div class="ss-list" id="ssList"></div>
     <div class="scope-pw-error" id="ssError" style="display:none;"></div>
     <div class="scope-pw-row" style="margin-top:12px"><button class="scope-pw-confirm" style="flex:1" onclick="saveStaffSetup()">儲存</button></div>
@@ -760,6 +767,7 @@ const FREEZE_FROM = '2026-11-02';
 let scheduleData = {}, overrides = {}, pendingData = [];
 let leaveReqs = [], settings = {};   // 待審核的請假申請；後端設定（order＝人員排序）
 let leaves = [];   // 「🏖️ 請假」檢視用：Connecteam＋網頁請假（已核准、待審核）
+let qcCells = {};  // 印切班表（唯讀）：'t1-一' 或 '2026-11-20_t1' → { people }；後端每 5 分鐘同步，只疊在畫面上，不會寫回
 let currentWeekOffset = 0, filterPeople = {};   // 上方人名可多選：選了的人正常顯示，其他人變淡；都沒選＝全部正常
 let editingCell = null, editingDateKey = null;
 const isMobile = () => window.innerWidth <= 768;
@@ -783,15 +791,15 @@ function init() {
 }
 
 function renderAll() {
-  rebuildColors(); rebuildRanks();
-  updateWeekLabel(); renderView(); renderLegend(); updateTodayBtn(); updatePendingCount();
+  rebuildColors(); rebuildRanks(); rebuildQcNames();
+  renderDeptTabs(); updateWeekLabel(); renderView(); renderLegend(); updateTodayBtn(); updatePendingCount();
 }
 
 /* 上次從雲端載入的完整班表存在瀏覽器，開頁先顯示它（只有 admin 才存、才用；別人用這台電腦看不到） */
 const CACHE_KEY = 'modelScheduleCache_v1';
 function readCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { return null; } }
-function writeCache() { if (!isAdmin()) return; try { localStorage.setItem(CACHE_KEY, JSON.stringify({ template: scheduleData, overrides: overrides, pending: pendingData, leaveReqs: leaveReqs, settings: settings, leaves: leaves })); } catch (e) {} }
-function clearData() { scheduleData = {}; overrides = {}; pendingData = []; leaveReqs = []; settings = {}; leaves = []; myRequests = []; myAvail = []; }
+function writeCache() { if (!isAdmin()) return; try { localStorage.setItem(CACHE_KEY, JSON.stringify({ template: scheduleData, overrides: overrides, pending: pendingData, leaveReqs: leaveReqs, settings: settings, leaves: leaves, qc: qcCells })); } catch (e) {} }
+function clearData() { qcCells = {}; scheduleData = {}; overrides = {}; pendingData = []; leaveReqs = []; settings = {}; leaves = []; myRequests = []; myAvail = []; }
 
 // 依登入身分載入：admin＝完整班表；員工＝只有自己的班；沒登入＝什麼都不載入（顯示登入畫面）
 function loadData() {
@@ -808,6 +816,7 @@ function loadData() {
         try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {}
       }
       settings = { renames: {} };
+      qcCells = data.qc || {};
       (data.formerNames || []).forEach(o => { settings.renames[o] = data.name; });
       scheduleData = data.template; overrides = data.overrides || {}; leaves = data.leaves || [];
       myRequests = data.myRequests || []; myAvail = data.myAvail || [];
@@ -818,7 +827,7 @@ function loadData() {
   const cached = readCache();
   if (cached && cached.template) {
     scheduleData = cached.template; overrides = cached.overrides || {}; pendingData = cached.pending || [];
-    leaveReqs = cached.leaveReqs || []; settings = cached.settings || {}; leaves = cached.leaves || [];
+    leaveReqs = cached.leaveReqs || []; settings = cached.settings || {}; leaves = cached.leaves || []; qcCells = cached.qc || {};
   }
   renderAll();
   if (!API_URL) { showToast('尚未設定後端網址（API_URL）'); return Promise.resolve(); }
@@ -827,7 +836,7 @@ function loadData() {
     .then(data => {
       if (data.error || !data.template) throw new Error(data.error || '回傳格式錯誤');
       scheduleData = data.template; overrides = data.overrides || {}; pendingData = data.pending || [];
-      leaveReqs = data.leaveRequests || []; settings = data.settings || {}; leaves = data.leaves || [];
+      leaveReqs = data.leaveRequests || []; settings = data.settings || {}; leaves = data.leaves || []; qcCells = data.qc || {};
       writeCache();
       renderAll();
     })
@@ -1007,11 +1016,53 @@ function personColor(name) {
 function ps(name) { const c = personColor(name); return 'background:' + c.bg + ';border-color:' + c.border + ';color:' + c.text; }
 
 /* ─── 把每小時的名單合併成「人員時段」：同一人連續的小時併成一段 ─── */
+/* ─── 印切班表疊加：印切的時段換算成每小時一格，跨到半小時的那格算有上班；跟模型班表同一格重複的人只算一次 ─── */
+const QC_SLOT_HOURS = { early: [8], t1: [8, 9, 10], t2: [10, 11], t3: [12, 13], t4: [13, 14, 15, 16], t5: [17], t6: [18, 19, 20, 21] };
+function qcAt(slotId, date) {
+  const hour = +slotId.slice(1), ds = dateStr(date), day = DAYS[dayIdx(date)], out = [];
+  Object.keys(QC_SLOT_HOURS).forEach(s => {
+    if (QC_SLOT_HOURS[s].indexOf(hour) < 0) return;
+    people(qcCells[ds + '_' + s] || qcCells[s + '-' + day]).forEach(p => { if (!out.some(x => x.name === p.name)) out.push(p); });
+  });
+  return out;
+}
+function leaveCovers(name, ds, hour) {
+  return leaves.some(l => {
+    if (l.name !== name || ds < l.from || ds > l.to) return false;
+    if (l.allDay) return true;
+    const a = l.from === ds ? parseInt(l.start, 10) : 8, m = l.to === ds ? String(l.end).split(':') : ['22', '00'], b = +m[0] + (+m[1] ? 1 : 0);
+    return hour >= a && hour < b;
+  });
+}
+function viewPeople(slotId, date) {
+  const list = people(getCell(slotId, date).data).slice();
+  qcAt(slotId, date).forEach(p => { if (!list.some(x => x.name === p.name) && !leaveCovers(p.name, dateStr(date), +slotId.slice(1))) list.push(p); });
+  return list;
+}
+
+/* ─── 部門分頁：只影響畫面顯示。部門在「👤 人員設定」指定；原本就有固定顏色的模型部成員預設算模型；印切分頁也會列出印切班表上的人 ─── */
+const DEPTS = ['全公司', '模型', '設計', '出貨', '行政/行銷', '印切'], DEPT_KEY = 'modelScheduleDept';
+let deptTab = (() => { try { return localStorage.getItem(DEPT_KEY); } catch (e) { return null; } })();
+if (DEPTS.indexOf(deptTab) < 0) deptTab = '全公司';
+let qcNames = {};
+function rebuildQcNames() { qcNames = {}; Object.keys(qcCells).forEach(k => people(qcCells[k]).forEach(p => { qcNames[p.name] = 1; })); }
+// 一個人可以跨部門；還沒在人員設定存過的人：有固定顏色的算模型、在印切班表上的算印切
+function deptsOf(name) {
+  const s = (settings.staff || {})[name];
+  if (s && s.depts) return s.depts;
+  return [].concat(fixedColor(name) ? ['模型'] : [], qcNames[name] ? ['印切'] : []);
+}
+function inDept(name) { return deptTab === '全公司' || deptsOf(name).indexOf(deptTab) >= 0 || (deptTab === '印切' && !!qcNames[name]); }
+function setDept(d) { deptTab = d; filterPeople = {}; try { localStorage.setItem(DEPT_KEY, d); } catch (e) {} renderDeptTabs(); renderLegend(); renderView(); }
+function renderDeptTabs() {
+  document.getElementById('deptTabs').innerHTML = DEPTS.map(d => '<button class="dept-tab' + (d === deptTab ? ' active' : '') + '" data-d="' + esc(d) + '" onclick="setDept(this.dataset.d)">' + esc(d) + '</button>').join('');
+}
+
 function daySegments(date) {
   const segs = [], open = {};
   TIME_SLOTS.forEach(slot => {
     const here = {};
-    people(getCell(slot.id, date).data).forEach(p => {
+    viewPeople(slot.id, date).forEach(p => {
       here[p.name] = 1;
       const s = open[p.name];
       if (s) { s.end = slot.hour + 1; if (p.note && s.notes.indexOf(p.note) < 0) s.notes.push(p.note); }
@@ -1092,6 +1143,8 @@ function attendStates(name, date) {
     const e = people(getCell(slot.id, date).data).find(p => p.name === name);
     const t = people(tmplAt(slot.id + '-' + DAYS[dayIdx(date)], ds)).some(p => p.name === name);
     if (e) return { s: t ? 'on' : 'add', note: e.note || '' };
+    const q = qcAt(slot.id, date).find(p => p.name === name);   // 印切班表上的班
+    if (q) return leaveCovers(name, ds, slot.hour) ? { s: 'leave' } : { s: 'on', note: q.note || '' };
     if (t) return { s: lv ? 'leave' : 'cut' };
     return { s: '' };
   });
@@ -1109,7 +1162,12 @@ function workText(st) {
 }
 function renderAttend(all) {
   const ti = all.findIndex(isToday), mode = tlDay !== null ? tlDay : (isMobile() ? (ti >= 0 ? ti : 0) : 'week');
-  const week = mode === 'week', idxs = week ? [0, 1, 2, 3, 4, 5, 6] : [mode], names = knownNames(), N = names.length;
+  const week = mode === 'week', idxs = week ? [0, 1, 2, 3, 4, 5, 6] : [mode];
+  // 全公司人多：只列這週有班的人（沒班只請假的人看「🏖️ 請假」）；各部門固定列出部門全部的人
+  let names = knownNames().filter(inDept);
+  if (deptTab === '全公司') names = names.filter(n => all.some(d => attendStates(n, d).some(x => x.s)));
+  if (!names.length) return '<div class="dept-empty">' + (deptTab === '全公司' ? '這週沒有人排班' : '「' + esc(deptTab) + '」還沒有人，請到「👤 人員設定」指定部門') + '</div>';
+  const N = names.length;
   const S = idxs.map(di => names.map(n => attendStates(n, all[di])));
   let h = '<div class="at-tools"><div class="at-seg"><button class="' + (week ? 'on' : '') + '" onclick="setTlDay(\'week\')">整週</button>' +
     all.map((d, i) => '<button class="' + (mode === i ? 'on' : '') + (isToday(d) ? ' today' : '') + '" onclick="setTlDay(' + i + ')">' + DAYS[i] + ' ' + (d.getMonth() + 1) + '/' + d.getDate() + '</button>').join('') + '</div>' +
@@ -1259,13 +1317,21 @@ function openStaffSetup() {
   document.getElementById('ssList').innerHTML = names.map(n => {
     const s = staff[n] || {};
     return '<div class="ss-row" data-name="' + esc(n) + '"><span class="ss-nm"><i style="background:' + personColor(n).border + '"></i>' + esc(n) + '</span>' +
-      '<input class="form-input ss-email" type="email" placeholder="Gmail（例：abc@gmail.com）" value="' + esc(s.email || '') + '" autocomplete="off">' +
-      '<select class="form-input ss-type"><option value="正職"' + (s.type !== '承攬' ? ' selected' : '') + '>正職</option><option value="承攬"' + (s.type === '承攬' ? ' selected' : '') + '>承攬制</option></select>' +
+      '<input class="form-input ss-email" type="email" placeholder="' + (s.type === '承攬' ? '承攬制用帳號密碼登入' : 'Gmail（例：abc@gmail.com）') + '" value="' + (s.type === '承攬' ? '' : esc(s.email || '')) + '"' + (s.type === '承攬' ? ' disabled' : '') + ' autocomplete="off">' +
+      '<select class="form-input ss-type" onchange="ssTypeChanged(this)"><option value="正職"' + (s.type !== '承攬' ? ' selected' : '') + '>正職</option><option value="承攬"' + (s.type === '承攬' ? ' selected' : '') + '>承攬制</option></select>' +
       '<input class="form-input ss-user" placeholder="帳號（選填）" value="' + esc(s.user || '') + '" autocomplete="off">' +
-      '<input class="form-input ss-pw" type="password" placeholder="' + (s.hasPw ? '已設密碼（不改留空）' : '密碼') + '" autocomplete="new-password"></div>';
+      '<input class="form-input ss-pw" type="password" placeholder="' + (s.hasPw ? '已設密碼（不改留空）' : '密碼') + '" autocomplete="new-password">' +
+      '<div class="ss-depts">' + DEPTS.slice(1).map(d => '<label><input type="checkbox" value="' + esc(d) + '"' + (deptsOf(n).indexOf(d) >= 0 ? ' checked' : '') + '>' + esc(d) + '</label>').join('') + '</div></div>';
   }).join('');
   document.getElementById('ssError').style.display = 'none';
   document.getElementById('staffSetupModal').classList.add('active');
+}
+// 承攬制只能用帳號密碼登入：Gmail 欄清空並鎖住
+function ssTypeChanged(sel) {
+  const input = sel.closest('.ss-row').querySelector('.ss-email'), ct = sel.value === '承攬';
+  input.disabled = ct;
+  if (ct) input.value = '';
+  input.placeholder = ct ? '承攬制用帳號密碼登入' : 'Gmail（例：abc@gmail.com）';
 }
 function closeStaffSetup() { document.getElementById('staffSetupModal').classList.remove('active'); }
 function saveStaffSetup() {
@@ -1277,7 +1343,7 @@ function saveStaffSetup() {
     const user = r.querySelector('.ss-user').value.trim(), pw = r.querySelector('.ss-pw').value, had = (settings.staff || {})[r.dataset.name] || {};
     if (user && !pw && !(had.hasPw && had.user)) bad = r.dataset.name + ' 設了帳號，請也設定密碼';
     if (pw && pw.length < 4) bad = r.dataset.name + ' 的密碼至少要 4 個字';
-    staff[r.dataset.name] = { email: email, type: r.querySelector('.ss-type').value, user: user, password: pw };
+    staff[r.dataset.name] = { email: email, type: r.querySelector('.ss-type').value, depts: [...r.querySelectorAll('.ss-depts input:checked')].map(c => c.value), user: user, password: pw };
   });
   if (bad) { errEl.textContent = bad; errEl.style.display = 'block'; return; }
   requireAdmin().then(name => {
@@ -1293,7 +1359,7 @@ function renderCards(dates) {
   const span = TIME_SLOTS.length;
   let h = '<div class="cards">';
   dates.forEach((date, di) => {
-    const segs = daySegments(date).sort((a, b) => orderIdx(a.name) - orderIdx(b.name) || a.start - b.start);
+    const segs = daySegments(date).filter(s => inDept(s.name)).sort((a, b) => orderIdx(a.name) - orderIdx(b.name) || a.start - b.start);
     const pend = TIME_SLOTS.filter(s => hourMark(date, s) === 'pend').length;
     h += '<div class="card' + (isToday(date) ? ' today' : '') + '"><div class="card-hd"><b>週' + DAYS[di] + '</b><small>' + (date.getMonth() + 1) + '/' + date.getDate() + '</small>' +
       (isToday(date) ? '<em>今天</em>' : '') + (pend ? '<span class="badge">待審核 ' + pend + '</span>' : '') +
@@ -1320,7 +1386,7 @@ function pendCount(date) { return TIME_SLOTS.filter(s => hourMark(date, s) === '
 
 /* ─── 🏖️ 請假：這週每天誰請假（Connecteam＋網頁請假），今天放最前面另外列 ─── */
 function leavesOn(ds) {
-  return leaves.filter(l => l.from <= ds && ds <= l.to).map(l => ({
+  return leaves.filter(l => l.from <= ds && ds <= l.to && inDept(l.name)).map(l => ({
     name: l.name, source: l.source, pending: l.status === '待審核',
     time: l.allDay ? '全天' : (l.from === ds ? l.start : '08:00') + '–' + (l.to === ds ? l.end : '22:00')
   })).sort((a, b) => orderIdx(a.name) - orderIdx(b.name));
@@ -1330,7 +1396,7 @@ function leaveRowsHTML(list) {
     const c = personColor(l.name);
     return '<div class="lv-row' + dimCls(l.name) + (l.pending ? ' pending' : '') + '" style="border-left-color:' + c.border + '">' +
       '<span class="av" style="background:' + c.bg + ';color:' + c.text + '">' + esc(Array.from(l.name)[0] || '') + '</span>' +
-      '<span class="nm" style="color:' + c.text + '">' + esc(l.name) + '<small>' + (l.pending ? '⏳ 審核中' : l.source === 'Connecteam' ? 'Connecteam' : '網頁申請') + '</small></span>' +
+      '<span class="nm" style="color:' + c.text + '">' + esc(l.name) + '<small>' + (l.pending ? '⏳ 審核中' : l.source === '網頁' ? '網頁申請' : l.source) + '</small></span>' +
       '<span class="tm">' + esc(l.time) + '</span></div>';
   }).join('');
 }
@@ -1380,15 +1446,16 @@ function orderIdx(name) { return name in rankMap ? rankMap[name] : 9999; }
 /* ─── 人員篩選 ─── */
 function knownNames(extra) {
   const set = {};
-  [scheduleData, overrides].concat(extra || []).forEach(src => {
+  [scheduleData, overrides, qcCells].concat(extra || []).forEach(src => {
     Object.keys(src).forEach(k => people(src[k]).forEach(p => { if (p.name) set[p.name] = 1; }));
   });
+  (settings.companyNames || []).forEach(n => { set[n] = 1; });   // Notion 班表登陸區的全公司名單
   const names = Object.keys(set);
   return names.sort((a, b) => orderPos(a) - orderPos(b) || names.indexOf(a) - names.indexOf(b));
 }
 
 function renderLegend() {
-  const names = knownNames();
+  const names = knownNames().filter(inDept);
   const el = document.getElementById('legendPeople');
   if (!names.length) { el.innerHTML = '<span class="hint">還沒有人排班，點任一格開始排</span>'; return; }
   const nSel = Object.keys(filterPeople).length;
