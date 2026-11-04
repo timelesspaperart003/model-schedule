@@ -478,7 +478,7 @@
 <header class="app-header">
   <div class="header-left">
     <div class="logo-icon">🧩</div>
-    <div><div class="header-title">模型部排班表</div><div class="header-subtitle">08:00 – 22:00・每半小時一格</div></div>
+    <div><div class="header-title">模型部排班表</div><div class="header-subtitle">07:00 – 22:00・每半小時一格</div></div>
   </div>
   <div class="header-right">
     <div class="week-today-row need-login">
@@ -656,7 +656,7 @@
     <div class="av-nav"><button onclick="avMoveMonth(-1)" aria-label="上個月">◀</button><b id="avMonth"></b><button onclick="avMoveMonth(1)" aria-label="下個月">▶</button></div>
     <div class="av-cal" id="avCal"></div>
     <div class="av-picked" id="avPicked"></div>
-    <label class="lr-check"><input type="checkbox" id="avAllDay" onchange="avToggleHours()"> 整天（08:00–22:00）</label>
+    <label class="lr-check"><input type="checkbox" id="avAllDay" onchange="avToggleHours()"> 整天（07:00–22:00）</label>
     <div class="lr-dates" id="avHours">
       <select class="form-input" id="avStart"></select>
       <span>~</span>
@@ -728,6 +728,7 @@
       <div class="bt-row">
         <span class="bt-label">② 時段</span>
         <span id="btSlots" class="bt-chips"></span>
+        <button class="bt-opt mini" onclick="batchPickSlotRange(7,12)">07–12</button>
         <button class="bt-opt mini" onclick="batchPickSlotRange(8,12)">08–12</button>
         <button class="bt-opt mini" onclick="batchPickSlotRange(13,18)">13–18</button>
         <button class="bt-opt mini" onclick="batchPickSlotRange(18,22)">18–22</button>
@@ -797,15 +798,16 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbz2CU-B8uVmibbbovl9gGSf
 const GOOGLE_CLIENT_ID = '489732439497-4mahc37ckf8no1m946m0icd2vcv1ouq3.apps.googleusercontent.com';
 const DAYS = ['一','二','三','四','五','六','日'];
 const pad2 = n => String(n).padStart(2, '0');
-// 08:00 ~ 22:00 半小時一格：h0800、h0830 ~ h2130；hour 用小數（8.5＝08:30）
+// 07:00 ~ 22:00 半小時一格：h0700、h0730 ~ h2130；hour 用小數（8.5＝08:30）
 const hourText = h => pad2(Math.floor(h)) + (h % 1 ? ':30' : ':00');
 const hourShort = h => Math.floor(h) + (h % 1 ? ':30' : '');   // 畫面上的 '8'、'8:30'
 const slotIdAt = h => 'h' + pad2(Math.floor(h)) + (h % 1 ? '30' : '00');
-const TIME_SLOTS = Array.from({ length: 28 }, (_, i) => {
-  const h = 8 + i / 2;
+const DAY_START = 7, DAY_END = 22;
+const TIME_SLOTS = Array.from({ length: (DAY_END - DAY_START) * 2 }, (_, i) => {
+  const h = DAY_START + i / 2;
   return { id: slotIdAt(h), hour: h, label: hourText(h), time: hourText(h + 0.5) };
 });
-const HOUR_SPAN = 14;   // 08–22 共幾小時（算色條寬度用）
+const HOUR_SPAN = DAY_END - DAY_START;   // 共幾小時（算色條寬度用）
 // 'HH:mm' 字串 → 小數小時；結束時間往後取到半小時，才不會少算
 const hmStart = t => { const p = String(t).split(':'); return +p[0] + (+p[1] >= 30 ? 0.5 : 0); };
 const hmEnd = t => { const p = String(t).split(':'), m = +p[1] || 0; return +p[0] + (m === 0 ? 0 : m <= 30 ? 0.5 : 1); };
@@ -864,13 +866,15 @@ function renderAll() {
 }
 
 /* 上次從雲端載入的完整班表存在瀏覽器，開頁先顯示它（只有 admin 才存、才用；別人用這台電腦看不到） */
-const CACHE_KEY = 'modelScheduleCache_v1';
+// 資料格式改了就把版本號加一：舊格式的快取畫不出來，會讓人以為班不見了（v1＝每小時一格）
+const CACHE_KEY = 'modelScheduleCache_v2';
+try { localStorage.removeItem('modelScheduleCache_v1'); localStorage.removeItem('modelScheduleMineCache_v1'); } catch (e) {}
 function readCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { return null; } }
-function writeCache() { if (!isAdmin()) return; try { localStorage.setItem(CACHE_KEY, JSON.stringify({ template: scheduleData, overrides: overrides, pending: pendingData, leaveReqs: leaveReqs, settings: settings, leaves: leaves, qc: qcCells })); } catch (e) {} }
+function writeCache() { if (!isAdmin()) return; try { localStorage.setItem(CACHE_KEY, JSON.stringify({ template: scheduleData, overrides: overrides, pending: pendingData, leaveReqs: leaveReqs, settings: settings, leaves: leaves, qc: qcCells })); } catch (e) { try { localStorage.removeItem(CACHE_KEY); } catch (e2) {} } }
 function clearData() { qcCells = {}; scheduleData = {}; overrides = {}; pendingData = []; leaveReqs = []; settings = {}; leaves = []; myRequests = []; myAvail = []; }
 
 // 依登入身分載入：admin＝完整班表；員工＝只有自己的班；沒登入＝什麼都不載入（顯示登入畫面）
-const MINE_CACHE_KEY = 'modelScheduleMineCache_v1';
+const MINE_CACHE_KEY = 'modelScheduleMineCache_v2';
 // 員工個人頁：上次的班表存在這台裝置，開頁先顯示，後端回來再更新（只有自己的資料；登出就清掉）
 function applyMine(data) {
   if (data.name && data.name !== session.name) {   // admin 幫他改過名字：這台裝置記的也跟著換，不用重新登入
@@ -903,7 +907,7 @@ function loadData(fresh) {
       if (seq !== loadSeq) return;
       if (data.error || !data.template) throw new Error(data.error || '回傳格式錯誤');
       applyMine(data);
-      try { localStorage.setItem(MINE_CACHE_KEY, JSON.stringify(data)); } catch (e) {}
+      try { localStorage.setItem(MINE_CACHE_KEY, JSON.stringify(data)); } catch (e) { try { localStorage.removeItem(MINE_CACHE_KEY); } catch (e2) {} }
       renderAll();
       tryLeaveLink();
     }).catch(e => showToast('載入失敗：' + (e.message || '請重新整理')));
@@ -1118,7 +1122,7 @@ function leaveCovers(name, ds, hour) {
   return leaves.some(l => {
     if (l.name !== name || ds < l.from || ds > l.to) return false;
     if (l.allDay) return true;
-    const a = l.from === ds ? hmStart(l.start) : 8, b = l.to === ds ? hmEnd(l.end) : 22;
+    const a = l.from === ds ? hmStart(l.start) : DAY_START, b = l.to === ds ? hmEnd(l.end) : DAY_END;
     return hour >= a && hour < b;
   });
 }
@@ -1375,7 +1379,7 @@ function renderMine(dates) {
     return '<div class="me-day' + (isToday(d) ? ' today' : '') + (work ? '' : ' off') + '"><div class="me-dh"><b>週' + DAYS[di] + '</b><small>' + (d.getMonth() + 1) + '/' + d.getDate() + '</small>' +
       (isToday(d) ? '<span class="today-badge">今天</span>' : '') + '</div><div class="me-st">' + body + (ct && work && dateStr(d) >= today ? '<button class="me-no" onclick="openAvail(\'no\',\'' + dateStr(d) + '\')">✕ 不能接</button>' : '') + '</div>' +
       (notes.length ? '<div class="me-note">' + esc(notes.join('、')) + '</div>' : '') +
-      '<div class="me-bar">' + bar + '</div><div class="me-ticks"><span>8</span><span>12</span><span>16</span><span>20</span></div></div>';
+      '<div class="me-bar">' + bar + '</div><div class="me-ticks"><span>7</span><span>12</span><span>17</span><span>22</span></div></div>';
   }).join('');
   const chip = s => '<span class="me-status s-' + esc(s) + '">' + esc(s) + '</span>';
   let list;
@@ -1471,7 +1475,7 @@ function renderCards(dates) {
     if (!segs.length) { h += '<div class="card-none" onclick="openHourPicker(' + di + ')">本日無排班</div></div>'; return; }
     // 一人一細條上下疊，重疊時段一眼看出有幾個人
     h += '<div class="card-lanes">' + segs.map(s => '<i class="' + dimCls(s.name).trim() + '" title="' + esc(s.name + ' ' + segTime(s)) + '" style="margin-left:' + ((s.start - FIRST_HOUR) / span * 100) + '%;width:' + ((s.end - s.start) / span * 100) + '%;background:' + personColor(s.name).border + '"></i>').join('') +
-      [8, 12, 16, 20].map(x => '<span class="tick" style="left:' + ((x - FIRST_HOUR) / span * 100) + '%">' + pad2(x) + '</span>').join('') + '</div>';
+      [7, 12, 17].map(x => '<span class="tick" style="left:' + ((x - FIRST_HOUR) / span * 100) + '%">' + pad2(x) + '</span>').join('') + '</div>';
     segs.forEach(s => {
       const c = personColor(s.name);
       const mks = [];
@@ -1492,7 +1496,7 @@ function pendCount(date) { return TIME_SLOTS.filter(s => hourMark(date, s) === '
 function leavesOn(ds) {
   return leaves.filter(l => l.from <= ds && ds <= l.to && inDept(l.name)).map(l => ({
     name: l.name, source: l.source, pending: l.status === '待審核',
-    time: l.allDay ? '全天' : (l.from === ds ? l.start : '08:00') + '–' + (l.to === ds ? l.end : '22:00')
+    time: l.allDay ? '全天' : (l.from === ds ? l.start : hourText(DAY_START)) + '–' + (l.to === ds ? l.end : hourText(DAY_END))
   })).sort((a, b) => orderIdx(a.name) - orderIdx(b.name));
 }
 function leaveRowsHTML(list) {
@@ -1654,8 +1658,8 @@ function openLeaveReq(mode) {
   if (mode === 'avail') { openAvail('yes'); return; }   // 承攬制改用可以選很多天的月曆
   lrMode = mode === 'avail' ? 'avail' : 'leave';
   const av = lrMode === 'avail';
-  document.getElementById('lrStart').innerHTML = hourOptions(8, 22, av ? 13 : 8);
-  document.getElementById('lrEnd').innerHTML = hourOptions(8.5, 22.5, av ? 18 : 22);
+  document.getElementById('lrStart').innerHTML = hourOptions(DAY_START, DAY_END, av ? 13 : 8);
+  document.getElementById('lrEnd').innerHTML = hourOptions(DAY_START + 0.5, DAY_END + 0.5, av ? 18 : 22);
   const today = dateStr(new Date());
   document.getElementById('lrReason').value = '';
   document.getElementById('lrFrom').value = today; document.getElementById('lrTo').value = today;
@@ -1664,7 +1668,7 @@ function openLeaveReq(mode) {
   document.getElementById('lrTitle').textContent = av ? '📥 回報可接案' : '🙋 請假申請';
   document.getElementById('lrDesc').innerHTML = av ? '填你<b>可以接案的日期和時段</b>，送出後<b>直接排進班表</b>。還沒到的可以在下方清單自己取消。'
     : '送出後會通知主管，<b>核准後自動從班表拿掉</b>這段時間的班。';
-  document.getElementById('lrAllDayLbl').textContent = av ? '整天（08:00–22:00）' : '全天';
+  document.getElementById('lrAllDayLbl').textContent = av ? '整天（07:00–22:00）' : '全天';
   document.getElementById('lrReasonLbl').textContent = av ? '備註（選填）' : '原因（選填）';
   document.getElementById('lrReason').placeholder = av ? '例：只能做組裝' : '例：家裡有事';
   document.getElementById('lrSubmit').textContent = av ? '送出（直接排進班表）' : '送出申請';
@@ -1677,8 +1681,8 @@ let avMode = 'yes', avPicked = {}, avMonth = null;
 function openAvail(mode, ds) {
   const now = ds ? parseDate(ds) : new Date();
   avMonth = new Date(now.getFullYear(), now.getMonth(), 1, 12);
-  document.getElementById('avStart').innerHTML = hourOptions(8, 22, 13);
-  document.getElementById('avEnd').innerHTML = hourOptions(8.5, 22.5, 18);
+  document.getElementById('avStart').innerHTML = hourOptions(DAY_START, DAY_END, 13);
+  document.getElementById('avEnd').innerHTML = hourOptions(DAY_START + 0.5, DAY_END + 0.5, 18);
   document.getElementById('avNote').value = '';
   avSetMode(mode);
   if (ds) { avPicked[ds] = 1; avRender(); }
@@ -1753,7 +1757,7 @@ function avApplyLocal(no, dates, sh, eh) {
 function submitAvail() {
   const errEl = document.getElementById('avError'), fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
   const dates = Object.keys(avPicked).sort(), no = avMode === 'no', allDay = document.getElementById('avAllDay').checked;
-  const sh = allDay ? 8 : +document.getElementById('avStart').value, eh = allDay ? 22 : +document.getElementById('avEnd').value;
+  const sh = allDay ? DAY_START : +document.getElementById('avStart').value, eh = allDay ? DAY_END : +document.getElementById('avEnd').value;
   errEl.style.display = 'none';
   if (!dates.length) { fail('請至少選一天'); return; }
   if (sh >= eh) { fail('結束時間要晚於開始時間'); return; }
@@ -1779,7 +1783,7 @@ const LEAVE_LINK = (() => {
   const q = new URLSearchParams(location.search), name = (q.get('leave') || '').trim(), re = /^\d{4}-\d{2}-\d{2}$/;
   if (!name) return null;
   const from = q.get('from') || '', to = q.get('to') || from, s = parseFloat(q.get('start')), e = parseFloat(q.get('end'));
-  const hours = s >= 8 && e <= 22 && s < e && s * 2 % 1 === 0 && e * 2 % 1 === 0;
+  const hours = s >= 7 && e <= 22 && s < e && s * 2 % 1 === 0 && e * 2 % 1 === 0;
   return { name: name, from: re.test(from) ? from : '', to: re.test(to) && to >= from ? to : from, start: hours ? s : null, end: hours ? e : null };
 })();
 let linkUsed = false;
@@ -1811,7 +1815,7 @@ function submitLeaveReq() {
   const errEl = document.getElementById('lrError');
   const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
   const allDay = document.getElementById('lrAllDay').checked, av = lrMode === 'avail';
-  const body = av ? { action: 'submitAvailability', from: v('lrFrom'), to: v('lrTo'), startHour: allDay ? 8 : +v('lrStart'), endHour: allDay ? 22 : +v('lrEnd'), note: v('lrReason') }
+  const body = av ? { action: 'submitAvailability', from: v('lrFrom'), to: v('lrTo'), startHour: allDay ? DAY_START : +v('lrStart'), endHour: allDay ? DAY_END : +v('lrEnd'), note: v('lrReason') }
     : { action: 'submitLeave', from: v('lrFrom'), to: v('lrTo'), allDay: allDay, reason: v('lrReason') };
   if (!av && !allDay) { body.startHour = +v('lrStart'); body.endHour = +v('lrEnd'); }
   if (!body.from || !body.to || body.to < body.from) { fail('請確認日期（結束日不能早於開始日）'); return; }
