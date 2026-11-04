@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- 模型部排班表 v20261102（原理同印切班表：固定班表 template＋臨時調整 overrides＋待審核 pending＋修改記錄 changelog） -->
+<!-- 全公司排班表（原模型部排班表）v20261102（原理同印切班表：固定班表 template＋臨時調整 overrides＋待審核 pending＋修改記錄 changelog） -->
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="format-detection" content="telephone=no">
 <meta name="format-detection" content="date=no">
-<title>模型部排班表</title>
+<title>全公司排班表</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -86,6 +86,7 @@
   .av-d.today { border-color: #4f46e5; }
   .av-d.sel { background: #4f46e5; border-color: #4f46e5; color: #fff; }
   .av-d.sel.work::after { background: #fff; }
+  .av-ok { font-weight: 600; margin: 4px 0 10px; }
   .av-picked { font-size: 13px; color: var(--text-muted); margin: 8px 0; line-height: 1.5; min-height: 20px; }
   .me-no { border: 1px solid var(--border); background: #fff; border-radius: 6px; font: inherit; font-size: 11px; color: var(--text-muted); padding: 2px 6px; cursor: pointer; white-space: nowrap; }
   .me-no:hover { background: #fee2e2; border-color: #fecaca; color: #b91c1c; }
@@ -499,9 +500,26 @@
     .log-compare { grid-template-columns: 1fr; gap: 4px; }
     .log-arrow { transform: rotate(90deg); }
     .modal-body { padding: 14px 16px; }
-    .batch-header { padding: 10px 14px; gap: 10px; }
+    /* 批量排班：工具列跟月曆一起捲，不要工具列佔滿、月曆只剩一小塊；長列改左右滑 */
+    .batch-overlay.active { overflow-y: auto; }
+    .batch-header { padding: 8px 12px; gap: 6px; }
+    .batch-title { font-size: 15px; width: 100%; }
+    .batch-header .week-nav { flex: 1; min-width: 0; }
+    .batch-actions { margin-left: 0; width: 100%; gap: 6px; }
+    .batch-actions .batch-count { margin-right: auto; }
     .batch-tools { padding: 8px 12px; }
-    .batch-scroll { padding: 10px 12px 40px; }
+    .bt-modes { overflow-x: auto; scrollbar-width: none; }
+    .bt-mode { flex: none; white-space: nowrap; }
+    .bt-row { row-gap: 8px; }
+    .bt-label { flex: 0 0 100%; }
+    .bt-name { flex: 1 1 110px; min-width: 0; }
+    .bt-note { flex: 1 1 110px; min-width: 0; }
+    .bt-date { flex: 1 1 120px; min-width: 0; }
+    .bt-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; padding-bottom: 2px; }
+    .bt-chips > * { flex: none; }
+    .bt-row > .bt-opt.mini { flex: none; }
+    .bt-legend { display: none; }
+    .batch-scroll { flex: none; overflow: visible; padding: 10px 12px 40px; }
     .batch-cal { grid-template-columns: 1fr; min-width: 0; }
     .bcal-wd, .bday.blank { display: none; }
     .bslot { font-size: 12px; padding: 3px 10px; }
@@ -513,7 +531,7 @@
 <header class="app-header">
   <div class="header-left">
     <div class="logo-icon">🧩</div>
-    <div><div class="header-title">模型部排班表</div><div class="header-subtitle">07:00 – 22:00・每半小時一格</div></div>
+    <div><div class="header-title">全公司排班表</div><div class="header-subtitle">07:00 – 22:00・每半小時一格</div></div>
   </div>
   <div class="header-right">
     <div class="week-today-row need-login">
@@ -703,6 +721,7 @@
       <label class="field-label">備註（選填）</label>
       <input type="text" class="form-input" id="avNote" placeholder="例：只能做組裝" autocomplete="off" maxlength="100" style="width:100%;margin-bottom:12px">
     </div>
+    <label class="lr-check av-ok"><input type="checkbox" id="avConfirm" onchange="avRender()"> 我已經跟主管確認過</label>
     <button class="scope-pw-confirm" id="avSubmit" style="width:100%" onclick="submitAvail()"></button>
     <div class="scope-pw-error" id="avError" style="display:none;"></div>
     <button class="scope-btn-back" onclick="closeAvail()">← 取消</button>
@@ -1251,7 +1270,7 @@ function dimCls(name) { return Object.keys(filterPeople).length && !filterPeople
 const VIEW_KEY = 'modelScheduleView';
 // 只留「時間軸」「卡片」「請假」（試用過的人員表／橫向時間軸／班別表已拿掉；之前存的舊選擇一律回到時間軸）
 let viewMode = (() => { try { return localStorage.getItem(VIEW_KEY); } catch (e) { return null; } })();
-if (['timeline', 'cards', 'leave'].indexOf(viewMode) < 0) viewMode = 'timeline';
+if (['timeline', 'cards', 'leave'].indexOf(viewMode) < 0) viewMode = isMobile() ? 'cards' : 'timeline';   // 第一次打開：手機看卡片、電腦看時間軸
 function setView(v) { viewMode = v; try { localStorage.setItem(VIEW_KEY, v); } catch (e) {} renderView(); }
 
 function renderView() {
@@ -1398,7 +1417,7 @@ function copyPageUrl() {
 let signingIn = false, mineLoading = false;
 function renderGuest() {
   if (signingIn) return '<div class="guest"><div class="guest-card"><div class="guest-logo">🧩</div><h2>登入中…</h2><div class="guest-spin"></div><p>正在確認你的身分，可能要等 5–10 秒，請不要關閉。</p></div></div>';
-  return '<div class="guest"><div class="guest-card"><div class="guest-logo">🧩</div><h2>模型部排班表</h2>' +
+  return '<div class="guest"><div class="guest-card"><div class="guest-logo">🧩</div><h2>全公司排班表</h2>' +
     (IN_APP_BROWSER ? '<div class="guest-link">⚠️ 這是 App 內建的瀏覽器，Google 登入可能會失敗。建議改用 Chrome 或 Safari 開啟。<br><button class="btn" style="margin-top:6px" onclick="copyPageUrl()">複製網址</button></div>' : '') +
     (LEAVE_LINK && !linkUsed ? '<div class="guest-link">🙋 登入後會幫你帶入請假：<b>' + esc(LEAVE_LINK.name) + '</b>　' + esc(leaveLinkText(LEAVE_LINK)) + '</div>' : '') +
     '<p>請登入查看你的班表</p><div id="gBtnBig" class="guest-btn"></div>' +
@@ -1760,6 +1779,7 @@ function avSetMode(mode) {
     : '點選<b>可以接案的日期</b>（可以選很多天），按上方「一、二…」可整排選取。同一個時段，送出後<b>直接排進班表</b>。';
   document.getElementById('avNoteWrap').style.display = no ? 'none' : '';
   document.getElementById('avAllDay').checked = no;   // 不能接預設整天
+  document.getElementById('avConfirm').checked = false;
   document.getElementById('avError').style.display = 'none';
   avToggleHours(); avRender();
 }
@@ -1792,7 +1812,9 @@ function avRender() {
   document.getElementById('avPicked').textContent = list.length ? '已選 ' + list.length + ' 天：' + list.map(x => { const p = parseDate(x); return (p.getMonth() + 1) + '/' + p.getDate(); }).join('、') : '還沒選日期';
   const btn = document.getElementById('avSubmit');
   btn.textContent = avMode === 'no' ? '從班表拿掉（' + list.length + ' 天）' : '送出（' + list.length + ' 天，直接排進班表）';
-  btn.disabled = !list.length;
+  const ok = document.getElementById('avConfirm').checked;
+  btn.disabled = !list.length || !ok;
+  if (list.length && !ok) btn.textContent = '請先勾選「已跟主管確認」';
 }
 function avToggle(ds) { if (avPicked[ds]) delete avPicked[ds]; else avPicked[ds] = 1; avRender(); }
 // 按星期：這個月能選的都選；已經全選了就全部取消
@@ -1822,11 +1844,11 @@ function submitAvail() {
   const sh = allDay ? DAY_START : +document.getElementById('avStart').value, eh = allDay ? DAY_END : +document.getElementById('avEnd').value;
   errEl.style.display = 'none';
   if (!dates.length) { fail('請至少選一天'); return; }
+  if (!document.getElementById('avConfirm').checked) { fail('請先跟主管確認，並勾選「我已經跟主管確認過」'); return; }
   if (sh >= eh) { fail('結束時間要晚於開始時間'); return; }
   if (avSending) return;
-  if (no && !confirm('確定這 ' + dates.length + ' 天' + (allDay ? '整天' : ' ' + pad2(sh) + ':00–' + pad2(eh) + ':00') + '都不能接嗎？\n\n會從班表拿掉並通知主管。')) return;
-  const body = no ? { action: 'removeMyShifts', dates: dates, allDay: allDay, startHour: sh, endHour: eh }
-    : { action: 'submitAvailBatch', dates: dates, startHour: sh, endHour: eh, note: document.getElementById('avNote').value.trim() };
+  const body = no ? { action: 'removeMyShifts', confirmed: true, dates: dates, allDay: allDay, startHour: sh, endHour: eh }
+    : { action: 'submitAvailBatch', confirmed: true, dates: dates, startHour: sh, endHour: eh, note: document.getElementById('avNote').value.trim() };
   avSending = true;
   const btn = document.getElementById('avSubmit'); btn.disabled = true; btn.textContent = '送出中…';
   apiPost(body).then(okOrThrow).then(r => {
