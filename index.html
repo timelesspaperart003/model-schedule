@@ -294,6 +294,8 @@
   .guest { display: flex; justify-content: center; padding: 8vh 16px; }
   .guest-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow-md); padding: 36px 32px; max-width: 400px; width: 100%; text-align: center; }
   .guest-logo { font-size: 44px; margin-bottom: 6px; }
+  .guest-spin { width: 32px; height: 32px; margin: 16px auto; border: 3px solid var(--border); border-top-color: #4f46e5; border-radius: 50%; animation: guestSpin .9s linear infinite; }
+  @keyframes guestSpin { to { transform: rotate(360deg); } }
   .guest-card h2 { font-size: 22px; margin-bottom: 6px; }
   .guest-card p { color: var(--text-muted); font-size: 14px; }
   .guest-btn { display: flex; justify-content: center; margin: 22px 0 10px; min-height: 44px; }
@@ -902,15 +904,23 @@ function loadData(fresh) {
     if (!fresh) try { cachedMine = JSON.parse(localStorage.getItem(MINE_CACHE_KEY)); } catch (e) {}
     if (cachedMine && cachedMine.name === session.name && cachedMine.template) { applyMine(cachedMine); renderAll(); }
     else cachedMine = null;
+    mineLoading = !cachedMine && !fresh;
+    if (mineLoading) renderView();
     showToast(cachedMine ? '更新你的班表中...' : '載入你的班表中...');
     return apiPost({ action: 'readMine', fresh: fresh }).then(data => {
       if (seq !== loadSeq) return;
       if (data.error || !data.template) throw new Error(data.error || '回傳格式錯誤');
+      mineLoading = false;
       applyMine(data);
       try { localStorage.setItem(MINE_CACHE_KEY, JSON.stringify(data)); } catch (e) { try { localStorage.removeItem(MINE_CACHE_KEY); } catch (e2) {} }
       renderAll();
       tryLeaveLink();
-    }).catch(e => showToast('載入失敗：' + (e.message || '請重新整理')));
+    }).catch(e => {
+      if (seq !== loadSeq) return;
+      mineLoading = false;
+      if (!cachedMine) renderView();
+      showToast('載入失敗：' + (e.message || '請重新整理'));
+    });
   }
   const cached = fresh ? null : readCache();
   if (cached && cached.template) {
@@ -949,11 +959,14 @@ function isStaff() { return sessionOk() && session.role === 'staff' && !!session
 function needPick() { return sessionOk() && session.role === 'staff' && !session.name; }
 const READ_ACTIONS = { whoami: 1, loginPw: 1, read: 1, readMine: 1, readLog: 1 };
 let writeFreshUntil = 0;
+const READ_TIMEOUT = 45000;
 function apiPost(body) {
   if (!API_URL) return Promise.reject(new Error('尚未設定 API_URL'));
   if (!READ_ACTIONS[body.action]) writeFreshUntil = Date.now() + 60000;
   if (sessionOk() && !body.idToken && !body.pwToken) body = Object.assign(session.pwToken ? { pwToken: session.pwToken } : { idToken: session.token }, session.name && session.role === 'staff' && !session.pwToken ? { asName: session.name } : {}, body);
-  return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }).then(r => r.json()).then(resp => {
+  const req = fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }).then(r => r.json());
+  const timed = !READ_ACTIONS[body.action] ? req : Promise.race([req, new Promise((_, no) => setTimeout(() => no(new Error('連線逾時')), READ_TIMEOUT))]);
+  return timed.then(resp => {
     if (resp && /登入已過期/.test(resp.error || '')) { const g = session && !session.pwToken; authMsg = '登入已過期，請重新登入'; setSession(null); if (g) googlePrompt(); }
     return resp;
   });
@@ -1001,15 +1014,16 @@ function decodeJwt(t) {
 // Google 回傳登入結果 → 請後端確認身分（admin／員工／沒登記）
 function onGoogleCredential(resp) {
   const token = resp.credential, info = decodeJwt(token);
-  showToast('確認登入身分中...');
+  signingIn = true; authMsg = ''; renderView();
   apiPost({ action: 'whoami', idToken: token }).then(r => {
+    signingIn = false;
     if (r && r.success) {
       authMsg = '';
       setSession({ token: token, exp: info.exp, role: r.role, name: r.name || '', type: r.type || '', email: r.email, choices: r.choices || null });
       showToast(r.name ? r.name + ' 已登入' : '請選你的名字');
     }
     else { authMsg = (r && r.error) || '登入失敗'; setSession(null); showToast(authMsg); }
-  }).catch(() => showToast('無法連線雲端，請稍後再試'));
+  }).catch(() => { signingIn = false; authMsg = '連不上伺服器，請檢查網路後再登入一次'; renderView(); });
 }
 function initGoogle() {
   if (!GOOGLE_CLIENT_ID || !window.google || !google.accounts) return;
@@ -1337,8 +1351,18 @@ function pickMe(name) {
 function switchMe() { setSession(Object.assign({}, session, { name: '', type: '' })); }
 
 /* ─── 沒登入：登入畫面 ─── */
+// LINE、Facebook、Instagram 等 App 內建的瀏覽器，Google 登入常被擋，要改用手機的瀏覽器開
+const IN_APP_BROWSER = /Line\/|FBAN|FBAV|FB_IAB|Instagram|MicroMessenger|KAKAOTALK|Notion/i.test(navigator.userAgent);
+function copyPageUrl() {
+  const url = location.origin + location.pathname, done = () => showToast('已複製網址，貼到 Chrome 或 Safari 開啟');
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(done).catch(() => prompt('請複製這個網址', url));
+  else prompt('請複製這個網址', url);
+}
+let signingIn = false, mineLoading = false;
 function renderGuest() {
+  if (signingIn) return '<div class="guest"><div class="guest-card"><div class="guest-logo">🧩</div><h2>登入中…</h2><div class="guest-spin"></div><p>正在確認你的身分，可能要等 5–10 秒，請不要關閉。</p></div></div>';
   return '<div class="guest"><div class="guest-card"><div class="guest-logo">🧩</div><h2>模型部排班表</h2>' +
+    (IN_APP_BROWSER ? '<div class="guest-link">⚠️ 這是 App 內建的瀏覽器，Google 登入可能會失敗。建議改用 Chrome 或 Safari 開啟。<br><button class="btn" style="margin-top:6px" onclick="copyPageUrl()">複製網址</button></div>' : '') +
     (LEAVE_LINK && !linkUsed ? '<div class="guest-link">🙋 登入後會幫你帶入請假：<b>' + esc(LEAVE_LINK.name) + '</b>　' + esc(leaveLinkText(LEAVE_LINK)) + '</div>' : '') +
     '<p>請登入查看你的班表</p><div id="gBtnBig" class="guest-btn"></div>' +
     '<div class="guest-or"><span>承攬制用帳號密碼登入</span></div>' +
@@ -1357,12 +1381,13 @@ function loginWithPw() {
   apiPost({ action: 'loginPw', user: user, password: pw }).then(r => {
     if (r && r.success) { authMsg = ''; setSession({ pwToken: r.pwToken, exp: r.exp, role: 'staff', name: r.name, type: r.type, user: user }); showToast(r.name + ' 已登入'); }
     else { authMsg = (r && r.error) || '登入失敗'; renderView(); }
-  }).catch(() => showToast('無法連線雲端，請稍後再試')).then(() => { pwBusy = false; const b = document.getElementById('pwBtn'); if (b) { b.disabled = false; b.textContent = '登入'; } });
+  }).catch(() => { authMsg = '連不上伺服器，請檢查網路後再試一次'; renderView(); }).then(() => { pwBusy = false; const b = document.getElementById('pwBtn'); if (b) { b.disabled = false; b.textContent = '登入'; } });
 }
 
 /* ─── 員工個人頁：只看自己的班（後端只回傳這個人的資料） ───
  * 正職：可以申請請假；承攬：回報可以接案的日期＋時段（直接排進班表），還沒到的可以自己取消 */
 function renderMine(dates) {
+  if (mineLoading) return '<div class="guest"><div class="guest-card"><div class="guest-logo">🧩</div><h2>載入班表中…</h2><div class="guest-spin"></div><p>第一次載入可能要等 5–10 秒。</p></div></div>';
   const me = session.name, ct = session.type === '承攬', c = personColor(me), today = dateStr(new Date());
   let days = 0, hours = 0;
   const cards = dates.map((d, di) => {
