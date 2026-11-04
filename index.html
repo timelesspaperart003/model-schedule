@@ -126,7 +126,9 @@
   .at-corner { position: sticky; left: 0; z-index: 14 !important; background: var(--surface-2) !important; width: 52px; min-width: 52px; border-left: none !important; }
   .at-names .at-corner { background: var(--surface) !important; z-index: 13 !important; }
   .at-time { position: sticky; left: 0; z-index: 5; background: var(--surface); font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); text-align: right; padding: 0 8px 0 4px !important; border-right: 1px solid var(--border); vertical-align: top; height: 32px; }
-  .at-c { height: 32px; min-width: 20px; border-bottom: 1px solid #f0f1f3; position: relative; cursor: pointer; }
+  .at-half .at-c { border-bottom-color: #e4e6ea; }
+  .at tbody tr:not(.at-half) .at-c { border-bottom-style: dotted; }
+  .at-c { height: 17px; min-width: 20px; border-bottom: 1px solid #f0f1f3; position: relative; cursor: pointer; }
   .at-c.first { border-left: 2px solid var(--border-light); }
   .at-c.today { background: #fafaff; }
   .at.day .at-c { min-width: 70px; }
@@ -138,8 +140,9 @@
   .at-bar.add { background: repeating-linear-gradient(135deg, var(--at-on) 0 6px, var(--at-add) 6px 12px); }
   .at-bar.leave { background: var(--at-leave); color: var(--at-leave-t); }
   .at-bar.cut { background: var(--at-cut); color: var(--at-cut-t); }
-  .at-bar.s { top: 3px; border-top-left-radius: 7px; border-top-right-radius: 7px; z-index: 2; overflow: visible; }
-  .at-bar.e { bottom: 3px; border-bottom-left-radius: 7px; border-bottom-right-radius: 7px; }
+  .at-time { line-height: 1; vertical-align: top; }
+  .at-bar.s { top: 2px; border-top-left-radius: 7px; border-top-right-radius: 7px; z-index: 2; overflow: visible; }
+  .at-bar.e { bottom: 2px; border-bottom-left-radius: 7px; border-bottom-right-radius: 7px; }
   .at-lbl { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; white-space: nowrap; padding-top: 4px; writing-mode: vertical-rl; letter-spacing: .5px; }
   .at.day .at-lbl { writing-mode: horizontal-tb; font-size: 12px; padding: 6px 3px 0; letter-spacing: 0; white-space: normal; text-align: center; line-height: 1.35; }
   .at.day .at-bar.s { overflow: visible; overflow-x: clip; }
@@ -475,7 +478,7 @@
 <header class="app-header">
   <div class="header-left">
     <div class="logo-icon">🧩</div>
-    <div><div class="header-title">模型部排班表</div><div class="header-subtitle">08:00 – 22:00・每小時一格</div></div>
+    <div><div class="header-title">模型部排班表</div><div class="header-subtitle">08:00 – 22:00・每半小時一格</div></div>
   </div>
   <div class="header-right">
     <div class="week-today-row need-login">
@@ -794,11 +797,24 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbz2CU-B8uVmibbbovl9gGSf
 const GOOGLE_CLIENT_ID = '489732439497-4mahc37ckf8no1m946m0icd2vcv1ouq3.apps.googleusercontent.com';
 const DAYS = ['一','二','三','四','五','六','日'];
 const pad2 = n => String(n).padStart(2, '0');
-// 08:00 ~ 22:00 每小時一格：h08 ~ h21
-const TIME_SLOTS = Array.from({ length: 14 }, (_, i) => {
-  const h = 8 + i;
-  return { id: 'h' + pad2(h), hour: h, label: pad2(h) + ':00', time: pad2(h + 1) + ':00' };
+// 08:00 ~ 22:00 半小時一格：h0800、h0830 ~ h2130；hour 用小數（8.5＝08:30）
+const hourText = h => pad2(Math.floor(h)) + (h % 1 ? ':30' : ':00');
+const hourShort = h => Math.floor(h) + (h % 1 ? ':30' : '');   // 畫面上的 '8'、'8:30'
+const slotIdAt = h => 'h' + pad2(Math.floor(h)) + (h % 1 ? '30' : '00');
+const TIME_SLOTS = Array.from({ length: 28 }, (_, i) => {
+  const h = 8 + i / 2;
+  return { id: slotIdAt(h), hour: h, label: hourText(h), time: hourText(h + 0.5) };
 });
+const HOUR_SPAN = 14;   // 08–22 共幾小時（算色條寬度用）
+// 'HH:mm' 字串 → 小數小時；結束時間往後取到半小時，才不會少算
+const hmStart = t => { const p = String(t).split(':'); return +p[0] + (+p[1] >= 30 ? 0.5 : 0); };
+const hmEnd = t => { const p = String(t).split(':'), m = +p[1] || 0; return +p[0] + (m === 0 ? 0 : m <= 30 ? 0.5 : 1); };
+// 下拉選單的半小時選項（含 from、不含 to）
+function hourOptions(from, to, sel) {
+  let h = '';
+  for (let x = from; x < to; x += 0.5) h += '<option value="' + x + '"' + (x === sel ? ' selected' : '') + '>' + hourText(x) + '</option>';
+  return h;
+}
 /* 配色（C 白卡側條）：每人一個主色 → border＝色條／圓點、text＝加深的名字色、bg＝淡底（頭像、標籤用） */
 function mkColor(hex) {
   const n = parseInt(hex.slice(1), 16), dk = v => Math.round(v * .62);
@@ -867,20 +883,24 @@ function applyMine(data) {
   scheduleData = data.template; overrides = data.overrides || {}; leaves = data.leaves || [];
   myRequests = data.myRequests || []; myAvail = data.myAvail || [];
 }
+let loadSeq = 0;   // 只採用最後一次載入的結果，避免慢的舊回應蓋掉新資料
 function loadData(fresh) {
-  fresh = fresh === true;
+  // 剛寫入過：直接跟後端要最新的，也不要先畫一次瀏覽器存的舊班表
+  fresh = fresh === true || Date.now() < writeFreshUntil;
+  const seq = ++loadSeq;
   if (!isAdmin()) {
     // 只有真的登出才清快取；Google 登入一小時過期、自動換新時要留著，換好馬上顯示
     if (!session) try { localStorage.removeItem(CACHE_KEY); localStorage.removeItem(MINE_CACHE_KEY); } catch (e) {}
-    clearData();
+    if (!fresh || !isStaff()) clearData();
     renderAll();
     if (!isStaff() || !API_URL) return Promise.resolve();
     let cachedMine = null;
-    try { cachedMine = JSON.parse(localStorage.getItem(MINE_CACHE_KEY)); } catch (e) {}
+    if (!fresh) try { cachedMine = JSON.parse(localStorage.getItem(MINE_CACHE_KEY)); } catch (e) {}
     if (cachedMine && cachedMine.name === session.name && cachedMine.template) { applyMine(cachedMine); renderAll(); }
     else cachedMine = null;
     showToast(cachedMine ? '更新你的班表中...' : '載入你的班表中...');
     return apiPost({ action: 'readMine', fresh: fresh }).then(data => {
+      if (seq !== loadSeq) return;
       if (data.error || !data.template) throw new Error(data.error || '回傳格式錯誤');
       applyMine(data);
       try { localStorage.setItem(MINE_CACHE_KEY, JSON.stringify(data)); } catch (e) {}
@@ -888,7 +908,7 @@ function loadData(fresh) {
       tryLeaveLink();
     }).catch(e => showToast('載入失敗：' + (e.message || '請重新整理')));
   }
-  const cached = readCache();
+  const cached = fresh ? null : readCache();
   if (cached && cached.template) {
     scheduleData = cached.template; overrides = cached.overrides || {}; pendingData = cached.pending || [];
     leaveReqs = cached.leaveReqs || []; settings = cached.settings || {}; leaves = cached.leaves || []; qcCells = cached.qc || {};
@@ -898,6 +918,7 @@ function loadData(fresh) {
   showToast(cached ? '更新班表中...' : '載入班表中...');
   return apiPost({ action: 'read', fresh: fresh })
     .then(data => {
+      if (seq !== loadSeq) return;
       if (data.error || !data.template) throw new Error(data.error || '回傳格式錯誤');
       scheduleData = data.template; overrides = data.overrides || {}; pendingData = data.pending || [];
       leaveReqs = data.leaveRequests || []; settings = data.settings || {}; leaves = data.leaves || []; qcCells = data.qc || {};
@@ -922,8 +943,11 @@ function sessionOk() { return !!(session && session.exp * 1000 > Date.now() + 30
 function isAdmin() { return sessionOk() && session.role === 'admin'; }
 function isStaff() { return sessionOk() && session.role === 'staff' && !!session.name; }
 function needPick() { return sessionOk() && session.role === 'staff' && !session.name; }
+const READ_ACTIONS = { whoami: 1, loginPw: 1, read: 1, readMine: 1, readLog: 1 };
+let writeFreshUntil = 0;
 function apiPost(body) {
   if (!API_URL) return Promise.reject(new Error('尚未設定 API_URL'));
+  if (!READ_ACTIONS[body.action]) writeFreshUntil = Date.now() + 60000;
   if (sessionOk() && !body.idToken && !body.pwToken) body = Object.assign(session.pwToken ? { pwToken: session.pwToken } : { idToken: session.token }, session.name && session.role === 'staff' && !session.pwToken ? { asName: session.name } : {}, body);
   return fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }).then(r => r.json()).then(resp => {
     if (resp && /登入已過期/.test(resp.error || '')) { const g = session && !session.pwToken; authMsg = '登入已過期，請重新登入'; setSession(null); if (g) googlePrompt(); }
@@ -1080,12 +1104,12 @@ function personColor(name) {
 function ps(name) { const c = personColor(name); return 'background:' + c.bg + ';border-color:' + c.border + ';color:' + c.text; }
 
 /* ─── 把每小時的名單合併成「人員時段」：同一人連續的小時併成一段 ─── */
-/* ─── 印切班表疊加：印切的時段換算成每小時一格，跨到半小時的那格算有上班；跟模型班表同一格重複的人只算一次 ─── */
-const QC_SLOT_HOURS = { early: [8], t1: [8, 9, 10], t2: [10, 11], t3: [12, 13], t4: [13, 14, 15, 16], t5: [17], t6: [18, 19, 20, 21] };
+/* ─── 印切班表疊加：印切的時段換算成半小時一格；跟模型班表同一格重複的人只算一次 ─── */
+const QC_SLOT_RANGE = { early: [8, 8.5], t1: [8, 10.5], t2: [10.5, 12], t3: [12, 13.5], t4: [13.5, 17], t5: [17, 18], t6: [18, 21.5] };   // t6 到 21:10，算到 21:30
 function qcAt(slotId, date) {
-  const hour = +slotId.slice(1), ds = dateStr(date), day = DAYS[dayIdx(date)], out = [];
-  Object.keys(QC_SLOT_HOURS).forEach(s => {
-    if (QC_SLOT_HOURS[s].indexOf(hour) < 0) return;
+  const hour = slotById(slotId).hour, ds = dateStr(date), day = DAYS[dayIdx(date)], out = [];
+  Object.keys(QC_SLOT_RANGE).forEach(s => {
+    if (hour < QC_SLOT_RANGE[s][0] || hour >= QC_SLOT_RANGE[s][1]) return;
     people(qcCells[ds + '_' + s] || qcCells[s + '-' + day]).forEach(p => { if (!out.some(x => x.name === p.name)) out.push(p); });
   });
   return out;
@@ -1094,13 +1118,13 @@ function leaveCovers(name, ds, hour) {
   return leaves.some(l => {
     if (l.name !== name || ds < l.from || ds > l.to) return false;
     if (l.allDay) return true;
-    const a = l.from === ds ? parseInt(l.start, 10) : 8, m = l.to === ds ? String(l.end).split(':') : ['22', '00'], b = +m[0] + (+m[1] ? 1 : 0);
+    const a = l.from === ds ? hmStart(l.start) : 8, b = l.to === ds ? hmEnd(l.end) : 22;
     return hour >= a && hour < b;
   });
 }
 function viewPeople(slotId, date) {
   const list = people(getCell(slotId, date).data).slice();
-  qcAt(slotId, date).forEach(p => { if (!list.some(x => x.name === p.name) && !leaveCovers(p.name, dateStr(date), +slotId.slice(1))) list.push(p); });
+  qcAt(slotId, date).forEach(p => { if (!list.some(x => x.name === p.name) && !leaveCovers(p.name, dateStr(date), slotById(slotId).hour)) list.push(p); });
   return list;
 }
 
@@ -1129,15 +1153,15 @@ function daySegments(date) {
     viewPeople(slot.id, date).forEach(p => {
       here[p.name] = 1;
       const s = open[p.name];
-      if (s) { s.end = slot.hour + 1; if (p.note && s.notes.indexOf(p.note) < 0) s.notes.push(p.note); }
-      else { open[p.name] = { name: p.name, start: slot.hour, end: slot.hour + 1, notes: p.note ? [p.note] : [] }; segs.push(open[p.name]); }
+      if (s) { s.end = slot.hour + 0.5; if (p.note && s.notes.indexOf(p.note) < 0) s.notes.push(p.note); }
+      else { open[p.name] = { name: p.name, start: slot.hour, end: slot.hour + 0.5, notes: p.note ? [p.note] : [] }; segs.push(open[p.name]); }
     });
     Object.keys(open).forEach(n => { if (!here[n]) delete open[n]; });
   });
   return segs;
 }
 
-function segTime(s) { return pad2(s.start) + ':00–' + pad2(s.end) + ':00'; }
+function segTime(s) { return hourText(s.start) + '–' + hourText(s.end); }
 // 臨時調整只在「跟固定班表真的不一樣」時才標（整格存成臨時調整、內容卻相同的不算）
 function sameList(a, b) {
   const k = d => JSON.stringify(people(d).map(p => p.name + '|' + (p.note || '')).sort());
@@ -1215,12 +1239,12 @@ function attendStates(name, date) {
 }
 const isWork = s => s === 'on' || s === 'add';
 const isMiss = s => s === 'leave' || s === 'cut';
-// 連續上班的段落文字：'8–17 (9h)'；有兩段就 '8–9 (1h)、10–21 (11h)'
+// 連續上班的段落文字：'8–17 (9h)'、'8:30–12 (3.5h)'；有兩段就 '8–9 (1h)、10–21 (11h)'
 function workText(st) {
   const out = []; let a = -1;
   st.forEach((x, i) => {
     if (isWork(x.s) && a < 0) a = i;
-    if (a >= 0 && (!isWork(x.s) || i === st.length - 1)) { const b = isWork(x.s) ? i + 1 : i; out.push((FIRST_HOUR + a) + '–' + (FIRST_HOUR + b) + ' (' + (b - a) + 'h)'); a = -1; }
+    if (a >= 0 && (!isWork(x.s) || i === st.length - 1)) { const b = isWork(x.s) ? i + 1 : i; out.push(hourShort(FIRST_HOUR + a / 2) + '–' + hourShort(FIRST_HOUR + b / 2) + ' (' + (b - a) / 2 + 'h)'); a = -1; }
   });
   return out.join('、');
 }
@@ -1252,9 +1276,9 @@ function renderAttend(all) {
   }));
   h += '</tr></thead><tbody>';
   TIME_SLOTS.forEach((slot, hi) => {
-    h += '<tr><td class="at-time">' + slot.label + '</td>';
+    h += '<tr' + (slot.hour % 1 ? ' class="at-half"' : '') + '><td class="at-time">' + (slot.hour % 1 ? '' : slot.label) + '</td>';
     idxs.forEach((di, k) => {
-      const d = all[di], diff = hourMark(d, slot) === 'pend' ? '\n（這個小時有待審核的修改）' : '';
+      const d = all[di], diff = hourMark(d, slot) === 'pend' ? '\n（這個時段有待審核的修改）' : '';
       names.forEach((n, pi) => {
         const st = S[k][pi], x = st[hi], pv = (st[hi - 1] || {}).s, nx = (st[hi + 1] || {}).s;
         let inner = '', tip = n + ' ' + slot.label + '–' + slot.time + ' ';
@@ -1262,7 +1286,7 @@ function renderAttend(all) {
           const s = !isWork(pv), e = !isWork(nx);
           let lbl = '';
           // 時間寫在開頭那格；整週是直排，班太短（2 小時以下）放不下就只寫「8–9」
-          if (s) { let b = hi; while (isWork((st[b + 1] || {}).s)) b++; const len = b + 1 - hi; lbl = (FIRST_HOUR + hi) + '–' + (FIRST_HOUR + b + 1) + (week && len <= 2 ? '' : ' (' + len + 'h)'); }
+          if (s) { let b = hi; while (isWork((st[b + 1] || {}).s)) b++; const len = (b + 1 - hi) / 2; lbl = hourShort(slot.hour) + '–' + hourShort(TIME_SLOTS[b].hour + 0.5) + (week && len <= 2 ? '' : ' (' + len + 'h)'); }
           inner = '<div class="at-bar' + (x.s === 'add' ? ' add' : '') + (s ? ' s' : '') + (e ? ' e' : '') + '">' + (lbl ? '<span class="at-lbl">' + lbl + '</span>' : '') + '</div>';
           tip += x.s === 'add' ? '有上班（臨時加的班）' : '有上班'; if (x.note) tip += '｜' + x.note;
         } else if (isMiss(x.s)) {
@@ -1271,7 +1295,7 @@ function renderAttend(all) {
           tip += x.s === 'leave' ? '請假（原本是固定班）' : '臨時取消（原本是固定班）';
         } else tip += '沒排班';
         let now = '';
-        if (isToday(d)) { const t = new Date(), f = t.getHours() + t.getMinutes() / 60; if (f >= slot.hour && f < slot.hour + 1) now = '<div class="at-now" style="top:' + ((f - slot.hour) * 100) + '%"></div>'; }
+        if (isToday(d)) { const t = new Date(), f = t.getHours() + t.getMinutes() / 60; if (f >= slot.hour && f < slot.hour + 0.5) now = '<div class="at-now" style="top:' + ((f - slot.hour) * 200) + '%"></div>'; }
         h += '<td class="at-c' + (pi ? '' : ' first') + (isToday(d) ? ' today' : '') + dimCls(n) + '" data-col="' + k + '-' + pi + '" title="' + esc(tip + diff) + '" onclick="openEdit(\'' + slot.id + '\',' + di + ')">' + inner + now + '</td>';
       });
     });
@@ -1436,7 +1460,7 @@ function saveStaffSetup() {
 
 /* ─── E 卡片 ─── */
 function renderCards(dates) {
-  const span = TIME_SLOTS.length;
+  const span = HOUR_SPAN;
   let h = '<div class="cards">';
   dates.forEach((date, di) => {
     const segs = daySegments(date).filter(s => inDept(s.name)).sort((a, b) => orderIdx(a.name) - orderIdx(b.name) || a.start - b.start);
@@ -1451,8 +1475,8 @@ function renderCards(dates) {
     segs.forEach(s => {
       const c = personColor(s.name);
       const mks = [];
-      for (let x = s.start; x < s.end; x++) { const m = hourMark(date, slotById('h' + pad2(x))); if (m && mks.indexOf(m) < 0) mks.push(m); }
-      h += '<div class="card-row' + dimCls(s.name) + '" onclick="openEdit(\'h' + pad2(s.start) + '\',' + di + ')">' +
+      for (let x = s.start; x < s.end; x += 0.5) { const m = hourMark(date, slotById(slotIdAt(x))); if (m && mks.indexOf(m) < 0) mks.push(m); }
+      h += '<div class="card-row' + dimCls(s.name) + '" onclick="openEdit(\'' + slotIdAt(s.start) + '\',' + di + ')">' +
         '<span class="av" style="background:' + c.bg + ';border-color:' + c.border + ';color:' + c.text + '">' + esc(Array.from(s.name)[0] || '') + '</span>' +
         '<span class="nm">' + esc(s.name) + (s.notes.length ? '<small>' + esc(s.notes.join('、')) + '</small>' : '') + '</span>' +
         '<span class="tm">' + segTime(s) + mks.map(m => '<i class="mk ' + m + '"></i>').join('') + '</span></div>';
@@ -1499,7 +1523,7 @@ function renderLeaveView(dates) {
   return h + '</div>';
 }
 
-// 卡片的「✎ 編輯」：列出這天每個小時，選一個進去編輯
+// 卡片的「✎ 編輯」：列出這天每個時段，選一個進去編輯
 function openHourPicker(di) {
   const date = getWeekDates(currentWeekOffset)[di];
   document.getElementById('hourPickTitle').textContent = '選擇時段｜' + dayLabel(date);
@@ -1630,9 +1654,8 @@ function openLeaveReq(mode) {
   if (mode === 'avail') { openAvail('yes'); return; }   // 承攬制改用可以選很多天的月曆
   lrMode = mode === 'avail' ? 'avail' : 'leave';
   const av = lrMode === 'avail';
-  const hours = Array.from({ length: 15 }, (_, i) => 8 + i);
-  document.getElementById('lrStart').innerHTML = hours.slice(0, -1).map(h => '<option value="' + h + '"' + (av && h === 13 ? ' selected' : '') + '>' + pad2(h) + ':00</option>').join('');
-  document.getElementById('lrEnd').innerHTML = hours.slice(1).map(h => '<option value="' + h + '"' + (h === (av ? 18 : 22) ? ' selected' : '') + '>' + pad2(h) + ':00</option>').join('');
+  document.getElementById('lrStart').innerHTML = hourOptions(8, 22, av ? 13 : 8);
+  document.getElementById('lrEnd').innerHTML = hourOptions(8.5, 22.5, av ? 18 : 22);
   const today = dateStr(new Date());
   document.getElementById('lrReason').value = '';
   document.getElementById('lrFrom').value = today; document.getElementById('lrTo').value = today;
@@ -1654,9 +1677,8 @@ let avMode = 'yes', avPicked = {}, avMonth = null;
 function openAvail(mode, ds) {
   const now = ds ? parseDate(ds) : new Date();
   avMonth = new Date(now.getFullYear(), now.getMonth(), 1, 12);
-  const hours = Array.from({ length: 15 }, (_, i) => 8 + i);
-  document.getElementById('avStart').innerHTML = hours.slice(0, -1).map(h => '<option value="' + h + '"' + (h === 13 ? ' selected' : '') + '>' + pad2(h) + ':00</option>').join('');
-  document.getElementById('avEnd').innerHTML = hours.slice(1).map(h => '<option value="' + h + '"' + (h === 18 ? ' selected' : '') + '>' + pad2(h) + ':00</option>').join('');
+  document.getElementById('avStart').innerHTML = hourOptions(8, 22, 13);
+  document.getElementById('avEnd').innerHTML = hourOptions(8.5, 22.5, 18);
   document.getElementById('avNote').value = '';
   avSetMode(mode);
   if (ds) { avPicked[ds] = 1; avRender(); }
@@ -1714,6 +1736,20 @@ function avPickWeekday(i) {
   avRender();
 }
 let avSending = false;
+// 跟後端同一套規則：今天已經過去的小時不動
+function avApplyLocal(no, dates, sh, eh) {
+  const me = session.name, today = dateStr(new Date()), n = new Date(), nowH = n.getHours() + (n.getMinutes() >= 30 ? 0.5 : 0);
+  dates.forEach(ds => {
+    const date = parseDate(ds);
+    for (let h = sh; h < eh; h += 0.5) {
+      if (no && ds === today && h < nowH) continue;
+      const id = slotIdAt(h), list = people(getCell(id, date).data), has = list.some(p => p.name === me);
+      if (no ? !has : has) continue;
+      overrides[ds + '_' + id] = { people: no ? list.filter(p => p.name !== me) : list.concat([{ name: me, note: '' }]) };
+    }
+  });
+  renderAll();
+}
 function submitAvail() {
   const errEl = document.getElementById('avError'), fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
   const dates = Object.keys(avPicked).sort(), no = avMode === 'no', allDay = document.getElementById('avAllDay').checked;
@@ -1729,6 +1765,7 @@ function submitAvail() {
   const btn = document.getElementById('avSubmit'); btn.disabled = true; btn.textContent = '送出中…';
   apiPost(body).then(okOrThrow).then(r => {
     closeAvail();
+    avApplyLocal(no, dates, sh, eh);   // 畫面先改好，不用等重新載入
     showToast(no ? (r.count ? '已從班表拿掉 ' + r.count + ' 格' : '那些時間本來就沒有班') : (r.count ? '已排進班表（' + r.count + ' 格）' : '那些時間原本就有班，班表不用改'));
     loadData();
   }).catch(e => { fail('送出失敗：' + (e.message || '請稍後再試')); avRender(); }).then(() => { avSending = false; });
@@ -1741,8 +1778,8 @@ function closeLeaveReq() { document.getElementById('leaveReqModal').classList.re
 const LEAVE_LINK = (() => {
   const q = new URLSearchParams(location.search), name = (q.get('leave') || '').trim(), re = /^\d{4}-\d{2}-\d{2}$/;
   if (!name) return null;
-  const from = q.get('from') || '', to = q.get('to') || from, s = parseInt(q.get('start'), 10), e = parseInt(q.get('end'), 10);
-  const hours = s >= 8 && e <= 22 && s < e;
+  const from = q.get('from') || '', to = q.get('to') || from, s = parseFloat(q.get('start')), e = parseFloat(q.get('end'));
+  const hours = s >= 8 && e <= 22 && s < e && s * 2 % 1 === 0 && e * 2 % 1 === 0;
   return { name: name, from: re.test(from) ? from : '', to: re.test(to) && to >= from ? to : from, start: hours ? s : null, end: hours ? e : null };
 })();
 let linkUsed = false;
@@ -1792,7 +1829,7 @@ function submitLeaveReq() {
 
 function leaveReqText(q) {
   const f = ds => dayLabel(parseDate(ds));
-  return (q.from === q.to ? f(q.from) : f(q.from) + ' – ' + f(q.to)) + ' ' + (q.startHour == null ? '全天' : pad2(q.startHour) + ':00–' + pad2(q.endHour) + ':00');
+  return (q.from === q.to ? f(q.from) : f(q.from) + ' – ' + f(q.to)) + ' ' + (q.startHour == null ? '全天' : hourText(q.startHour) + '–' + hourText(q.endHour));
 }
 function leaveCardHTML(q, idx) {
   return '<div class="pending-card leave-card"><div class="log-meta"><span class="log-user">' + esc(q.name) + '</span><span class="log-scope leave">🙋 請假</span>' +
@@ -2306,7 +2343,7 @@ function renderBatchTools() {
   document.getElementById('btNameChips').innerHTML = names.map(n =>
     '<button class="bchip" data-name="' + esc(n) + '" style="' + ps(n) + '" onclick="batchPickName(this.dataset.name)">' + esc(n) + '</button>').join('');
   document.getElementById('btSlots').innerHTML = TIME_SLOTS.map(s =>
-    '<button class="bt-opt" data-slot="' + s.id + '" onclick="batchPickSlot(\'' + s.id + '\')" title="' + s.label + '~' + s.time + '">' + pad2(s.hour) + '</button>').join('');
+    '<button class="bt-opt" data-slot="' + s.id + '" onclick="batchPickSlot(\'' + s.id + '\')" title="' + s.label + '~' + s.time + '">' + (s.hour % 1 ? ':30' : pad2(s.hour)) + '</button>').join('');
   const wd = DAYS.map((d, i) => '<button class="bt-opt" data-wd="' + i + '" onclick="batchPickWeekday(' + i + ')">' + d + '</button>').join('');
   document.getElementById('btWeekdays').innerHTML = wd;
   document.getElementById('btWeekdaysFixed').innerHTML = wd;
@@ -2422,7 +2459,7 @@ function renderBatch() {
     TIME_SLOTS.forEach(slot => {
       const dk = ds + '_' + slot.id;
       const cls = (dk in batchDraft) ? ' changed' : (overrides[dk] ? ' override' : '');
-      h += '<div class="bslot' + cls + '" onclick="batchSlotClick(\'' + dk + '\')"><span class="bslot-time">' + pad2(slot.hour) + '</span><span class="bslot-ppl">' + batchCellHTML(batchEff(dk)) + '</span></div>';
+      h += '<div class="bslot' + cls + '" onclick="batchSlotClick(\'' + dk + '\')"><span class="bslot-time">' + slot.label + '</span><span class="bslot-ppl">' + batchCellHTML(batchEff(dk)) + '</span></div>';
     });
     h += '</div>';
   }
@@ -2468,9 +2505,9 @@ function batchEditRevert() {
  * 生效日之前的週次用舊固定班表存成臨時調整（保留原樣）；生效日之後已有的臨時調整也一起加／移除這個人
  * （加人時跳過刻意清空的日子，例如放假）。只限主管。 */
 function hourRanges(slotIds) {
-  const hs = slotIds.map(id => +id.slice(1)).sort((a, b) => a - b), out = [];
-  hs.forEach(h => { const last = out[out.length - 1]; if (last && last[1] === h) last[1] = h + 1; else out.push([h, h + 1]); });
-  return out.map(r => pad2(r[0]) + ':00–' + pad2(r[1]) + ':00').join('、');
+  const hs = slotIds.map(id => slotById(id).hour).sort((a, b) => a - b), out = [];
+  hs.forEach(h => { const last = out[out.length - 1]; if (last && last[1] === h) last[1] = h + 0.5; else out.push([h, h + 0.5]); });
+  return out.map(r => hourText(r[0]) + '–' + hourText(r[1])).join('、');
 }
 
 function batchApplyFixed(remove) {
