@@ -70,6 +70,24 @@
   .view-toggle { display: inline-flex; gap: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px; padding: 3px; }
   .view-btn { border: none; background: transparent; font-family: inherit; font-size: 12px; font-weight: 600; color: var(--text-muted); padding: 4px 12px; border-radius: 16px; cursor: pointer; white-space: nowrap; }
   .view-btn.active { background: var(--text); color: #fff; }
+  .at-names th.at-off .at-nm { opacity: .32; }   /* 當天沒班的人名字淡掉 */
+  .av-modal { max-height: 92vh; overflow-y: auto; }
+  .av-mode { display: flex; gap: 6px; margin-bottom: 10px; }
+  .av-mode button { flex: 1; padding: 8px; border: 1px solid var(--border); background: #fff; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+  .av-mode button.on { background: var(--text); border-color: var(--text); color: #fff; }
+  .av-nav { display: flex; align-items: center; justify-content: space-between; margin: 8px 0 6px; }
+  .av-nav button { border: 1px solid var(--border); background: #fff; border-radius: 6px; width: 36px; height: 30px; cursor: pointer; }
+  .av-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .av-wd { border: none; background: var(--surface-2); border-radius: 6px; padding: 5px 0; font: inherit; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+  .av-d { position: relative; height: 40px; border: 1px solid var(--border); border-radius: 8px; background: #fff; font: inherit; font-size: 14px; cursor: pointer; color: inherit; }
+  .av-d:disabled { opacity: .3; cursor: default; background: transparent; }
+  .av-d.work::after { content: ''; position: absolute; left: 50%; bottom: 4px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #7d9b84; }
+  .av-d.today { border-color: #4f46e5; }
+  .av-d.sel { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+  .av-d.sel.work::after { background: #fff; }
+  .av-picked { font-size: 13px; color: var(--text-muted); margin: 8px 0; line-height: 1.5; min-height: 20px; }
+  .me-no { margin-left: auto; border: 1px solid var(--border); background: #fff; border-radius: 6px; font: inherit; font-size: 11px; color: var(--text-muted); padding: 2px 6px; cursor: pointer; white-space: nowrap; }
+  .me-no:hover { background: #fee2e2; border-color: #fecaca; color: #b91c1c; }
   .dept-tabs { display: flex; gap: 4px; padding: 10px 16px 0; overflow-x: auto; background: var(--bg, transparent); }
   .dept-tab { border: 1px solid var(--border); background: #fff; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text-muted); padding: 6px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
   .dept-tab.active { background: var(--text); border-color: var(--text); color: #fff; }
@@ -623,6 +641,33 @@
     <button class="scope-btn-back" onclick="closeLeaveReq()">← 取消</button>
   </div>
 </div>
+<!-- 承攬制：一次選很多天回報可接案／不能接 -->
+<div class="scope-overlay" id="availModal">
+  <div class="scope-modal av-modal" style="text-align:left">
+    <div class="scope-title">📥 回報可接案</div>
+    <div class="av-mode">
+      <button id="avModeYes" onclick="avSetMode('yes')">✅ 可以接</button>
+      <button id="avModeNo" onclick="avSetMode('no')">❌ 不能接了</button>
+    </div>
+    <div class="scope-desc" id="avDesc"></div>
+    <div class="av-nav"><button onclick="avMoveMonth(-1)" aria-label="上個月">◀</button><b id="avMonth"></b><button onclick="avMoveMonth(1)" aria-label="下個月">▶</button></div>
+    <div class="av-cal" id="avCal"></div>
+    <div class="av-picked" id="avPicked"></div>
+    <label class="lr-check"><input type="checkbox" id="avAllDay" onchange="avToggleHours()"> 整天（08:00–22:00）</label>
+    <div class="lr-dates" id="avHours">
+      <select class="form-input" id="avStart"></select>
+      <span>~</span>
+      <select class="form-input" id="avEnd"></select>
+    </div>
+    <div id="avNoteWrap">
+      <label class="field-label">備註（選填）</label>
+      <input type="text" class="form-input" id="avNote" placeholder="例：只能做組裝" autocomplete="off" maxlength="100" style="width:100%;margin-bottom:12px">
+    </div>
+    <button class="scope-pw-confirm" id="avSubmit" style="width:100%" onclick="submitAvail()"></button>
+    <div class="scope-pw-error" id="avError" style="display:none;"></div>
+    <button class="scope-btn-back" onclick="closeAvail()">← 取消</button>
+  </div>
+</div>
 <!-- 人員設定（admin）：Google email、正職／承攬 -->
 <div class="scope-overlay" id="staffSetupModal">
   <div class="scope-modal ss-modal" style="text-align:left">
@@ -787,7 +832,7 @@ function slotText(id) { const s = slotById(id); return s ? s.label + ' ~ ' + s.t
 
 function init() {
   document.getElementById('setupBanner').classList.toggle('show', !API_URL);
-  try { localStorage.removeItem('modelScheduleAdmin'); const s = JSON.parse(localStorage.getItem(SESSION_KEY)); if (s && s.token) session = s; } catch (e) {}
+  try { localStorage.removeItem('modelScheduleAdmin'); const s = JSON.parse(localStorage.getItem(SESSION_KEY)); if (s && (s.token || s.pwToken)) session = s; } catch (e) {}
   applyRole();
   loadData();
   // 跨過手機／桌機寬度時重畫（時間軸在手機上一次只顯示一天）
@@ -1190,7 +1235,7 @@ function renderAttend(all) {
   h += '</tr><tr class="at-names"><th class="at-corner"></th>';
   idxs.forEach((di, k) => names.forEach((n, pi) => {
     const c = personColor(n), wt = workText(S[k][pi]);
-    h += '<th class="' + (pi ? '' : 'first') + dimCls(n) + '" data-col="' + k + '-' + pi + '" title="' + esc(n + (wt ? ' ' + wt : ' 沒排班')) + '" onclick="toggleFilter(this.dataset.name)" data-name="' + esc(n) + '">' +
+    h += '<th class="' + (pi ? '' : 'first') + dimCls(n) + (S[k][pi].some(x => isWork(x.s)) ? '' : ' at-off') + '" data-col="' + k + '-' + pi + '" title="' + esc(n + (wt ? ' ' + wt : ' 沒排班')) + '" onclick="toggleFilter(this.dataset.name)" data-name="' + esc(n) + '">' +
       '<span class="at-nm" style="background:' + c.bg + ';color:' + c.text + ';box-shadow:inset 0 -2px 0 ' + c.border + '">' + esc(n) + '</span></th>';
   }));
   h += '</tr></thead><tbody>';
@@ -1292,7 +1337,7 @@ function renderMine(dates) {
     if (work && lv) body += '<span class="me-leave sm">🏖️ ' + (lv.allDay ? '請假' : lv.start + '–' + lv.end + ' 請假') + (lv.status === '待審核' ? '（審核中）' : '') + '</span>';
     const bar = st.map((x, i) => x.s ? '<i class="' + x.s + '" style="left:' + (i / st.length * 100) + '%;width:' + (100 / st.length) + '%"></i>' : '').join('');
     return '<div class="me-day' + (isToday(d) ? ' today' : '') + (work ? '' : ' off') + '"><div class="me-dh"><b>週' + DAYS[di] + '</b><small>' + (d.getMonth() + 1) + '/' + d.getDate() + '</small>' +
-      (isToday(d) ? '<span class="today-badge">今天</span>' : '') + '</div><div class="me-st">' + body + '</div>' +
+      (isToday(d) ? '<span class="today-badge">今天</span>' : '') + (ct && work && dateStr(d) >= today ? '<button class="me-no" onclick="openAvail(\'no\',\'' + dateStr(d) + '\')">✕ 不能接</button>' : '') + '</div><div class="me-st">' + body + '</div>' +
       (notes.length ? '<div class="me-note">' + esc(notes.join('、')) + '</div>' : '') +
       '<div class="me-bar">' + bar + '</div><div class="me-ticks"><span>8</span><span>12</span><span>16</span><span>20</span></div></div>';
   }).join('');
@@ -1301,7 +1346,7 @@ function renderMine(dates) {
   if (ct) {
     const rows = myAvail.slice().reverse().map(a => '<div class="me-row"><span>' + esc(leaveReqText({ from: a.from, to: a.to, startHour: a.startHour, endHour: a.endHour })) + (a.note ? '<small>' + esc(a.note) + '</small>' : '') + '</span>' + chip(a.status) +
       (a.status === '已排入' && a.from > today ? '<button class="btn" onclick="cancelAvail(\'' + esc(a.id) + '\')">取消</button>' : '') + '</div>').join('');
-    list = '<h4>📥 我回報的可接案</h4>' + (rows || '<div class="me-empty">還沒有回報過。按「📥 回報可接案」填可以接的日期和時段，送出後會直接排進班表。</div>');
+    list = '<h4>📥 我回報的可接案</h4>' + (rows || '<div class="me-empty">還沒有回報過。按「📥 回報可接案」在月曆上選可以接的日子，可以一次選很多天；原本可以、後來不行就切到「不能接了」。</div>');
   } else {
     const rows = myRequests.slice().reverse().map(q => '<div class="me-row"><span>' + esc(leaveReqText(q)) + (q.reason ? '<small>' + esc(q.reason) + '</small>' : '') + '</span>' + chip(q.status) + '</div>').join('');
     list = '<h4>🙋 我的請假申請</h4>' + (rows || '<div class="me-empty">還沒有請假申請。</div>');
@@ -1368,7 +1413,11 @@ function saveStaffSetup() {
   requireAdmin().then(name => {
     if (!name) return;
     apiPost({ action: 'saveStaff', staff: staff }).then(okOrThrow)
-      .then(() => { closeStaffSetup(); showToast('已儲存人員設定'); loadData(); })
+      .then(resp => {
+        // 舊版後端不認得部門，會回成功卻把部門丟掉：直接講清楚，不要讓人以為存好了
+        if (!resp.version) throw new Error('後端還不是最新版，部門不會被存下來。請到 Apps Script「管理部署 → 新版本」部署後再存一次');
+        closeStaffSetup(); showToast('已儲存人員設定'); loadData();
+      })
       .catch(e => { errEl.textContent = '儲存失敗：' + (e.message || '請重試'); errEl.style.display = 'block'; });
   });
 }
@@ -1566,6 +1615,7 @@ function confirmOrder() {
  * 請假：主管在「📋 記錄 → 待審核」核准後自動從班表拿掉；可接案：送出就直接排進班表 */
 let lrMode = 'leave';
 function openLeaveReq(mode) {
+  if (mode === 'avail') { openAvail('yes'); return; }   // 承攬制改用可以選很多天的月曆
   lrMode = mode === 'avail' ? 'avail' : 'leave';
   const av = lrMode === 'avail';
   const hours = Array.from({ length: 15 }, (_, i) => 8 + i);
@@ -1587,6 +1637,91 @@ function openLeaveReq(mode) {
   document.getElementById('lrError').style.display = 'none';
   document.getElementById('leaveReqModal').classList.add('active');
 }
+/* ─── 承攬制：月曆點選很多天，同一個時段一次送出。「可以接」直接排進班表；「不能接了」把那幾天從班表拿掉（有綠點的才是有班的日子） ─── */
+let avMode = 'yes', avPicked = {}, avMonth = null;
+function openAvail(mode, ds) {
+  const now = ds ? parseDate(ds) : new Date();
+  avMonth = new Date(now.getFullYear(), now.getMonth(), 1, 12);
+  const hours = Array.from({ length: 15 }, (_, i) => 8 + i);
+  document.getElementById('avStart').innerHTML = hours.slice(0, -1).map(h => '<option value="' + h + '"' + (h === 13 ? ' selected' : '') + '>' + pad2(h) + ':00</option>').join('');
+  document.getElementById('avEnd').innerHTML = hours.slice(1).map(h => '<option value="' + h + '"' + (h === 18 ? ' selected' : '') + '>' + pad2(h) + ':00</option>').join('');
+  document.getElementById('avNote').value = '';
+  avSetMode(mode);
+  if (ds) { avPicked[ds] = 1; avRender(); }
+  document.getElementById('availModal').classList.add('active');
+}
+function closeAvail() { document.getElementById('availModal').classList.remove('active'); }
+function avSetMode(mode) {
+  avMode = mode; avPicked = {};
+  const no = mode === 'no';
+  document.getElementById('avModeYes').classList.toggle('on', !no);
+  document.getElementById('avModeNo').classList.toggle('on', no);
+  document.getElementById('avDesc').innerHTML = no ? '點選<b>不能接的日期</b>（可以選很多天），送出後從班表拿掉，並通知主管。綠點＝那天有班。'
+    : '點選<b>可以接案的日期</b>（可以選很多天），按上方「一、二…」可整排選取。同一個時段，送出後<b>直接排進班表</b>。';
+  document.getElementById('avNoteWrap').style.display = no ? 'none' : '';
+  document.getElementById('avAllDay').checked = no;   // 不能接預設整天
+  document.getElementById('avError').style.display = 'none';
+  avToggleHours(); avRender();
+}
+function avToggleHours() { document.getElementById('avHours').style.display = document.getElementById('avAllDay').checked ? 'none' : ''; }
+function avMoveMonth(d) {
+  const first = new Date(); first.setDate(1);
+  const m = new Date(avMonth.getFullYear(), avMonth.getMonth() + d, 1, 12);
+  if (m.getFullYear() * 12 + m.getMonth() < first.getFullYear() * 12 + first.getMonth()) return;   // 不能回到過去的月份
+  avMonth = m; avRender();
+}
+function avHasWork(date) { return attendStates(session.name, date).some(x => isWork(x.s)); }
+function avMonthDays() {
+  const out = [], y = avMonth.getFullYear(), m = avMonth.getMonth(), n = new Date(y, m + 1, 0, 12).getDate();
+  for (let d = 1; d <= n; d++) out.push(new Date(y, m, d, 12));
+  return out;
+}
+// 這天能不能選：今天以後；「不能接」只能選有班的日子
+function avSelectable(date) { return dateStr(date) >= dateStr(new Date()) && (avMode !== 'no' || avHasWork(date)); }
+function avRender() {
+  document.getElementById('avMonth').textContent = avMonth.getFullYear() + ' 年 ' + (avMonth.getMonth() + 1) + ' 月';
+  const days = avMonthDays(), today = dateStr(new Date());
+  let h = DAYS.map((w, i) => '<button class="av-wd" title="選取這個月所有週' + w + '" onclick="avPickWeekday(' + i + ')">' + w + '</button>').join('');
+  h += '<span></span>'.repeat(dayIdx(days[0]));
+  days.forEach(d => {
+    const ds = dateStr(d), work = avHasWork(d);
+    h += '<button class="av-d' + (work ? ' work' : '') + (avPicked[ds] ? ' sel' : '') + (ds === today ? ' today' : '') + '"' + (avSelectable(d) ? '' : ' disabled') + ' onclick="avToggle(\'' + ds + '\')">' + d.getDate() + '</button>';
+  });
+  document.getElementById('avCal').innerHTML = h;
+  const list = Object.keys(avPicked).sort();
+  document.getElementById('avPicked').textContent = list.length ? '已選 ' + list.length + ' 天：' + list.map(x => { const p = parseDate(x); return (p.getMonth() + 1) + '/' + p.getDate(); }).join('、') : '還沒選日期';
+  const btn = document.getElementById('avSubmit');
+  btn.textContent = avMode === 'no' ? '從班表拿掉（' + list.length + ' 天）' : '送出（' + list.length + ' 天，直接排進班表）';
+  btn.disabled = !list.length;
+}
+function avToggle(ds) { if (avPicked[ds]) delete avPicked[ds]; else avPicked[ds] = 1; avRender(); }
+// 按星期：這個月能選的都選；已經全選了就全部取消
+function avPickWeekday(i) {
+  const list = avMonthDays().filter(d => dayIdx(d) === i && avSelectable(d)), all = list.length && list.every(d => avPicked[dateStr(d)]);
+  list.forEach(d => { if (all) delete avPicked[dateStr(d)]; else avPicked[dateStr(d)] = 1; });
+  avRender();
+}
+let avSending = false;
+function submitAvail() {
+  const errEl = document.getElementById('avError'), fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  const dates = Object.keys(avPicked).sort(), no = avMode === 'no', allDay = document.getElementById('avAllDay').checked;
+  const sh = allDay ? 8 : +document.getElementById('avStart').value, eh = allDay ? 22 : +document.getElementById('avEnd').value;
+  errEl.style.display = 'none';
+  if (!dates.length) { fail('請至少選一天'); return; }
+  if (sh >= eh) { fail('結束時間要晚於開始時間'); return; }
+  if (avSending) return;
+  if (no && !confirm('確定這 ' + dates.length + ' 天' + (allDay ? '整天' : ' ' + pad2(sh) + ':00–' + pad2(eh) + ':00') + '都不能接嗎？\n\n會從班表拿掉並通知主管。')) return;
+  const body = no ? { action: 'removeMyShifts', dates: dates, allDay: allDay, startHour: sh, endHour: eh }
+    : { action: 'submitAvailBatch', dates: dates, startHour: sh, endHour: eh, note: document.getElementById('avNote').value.trim() };
+  avSending = true;
+  const btn = document.getElementById('avSubmit'); btn.disabled = true; btn.textContent = '送出中…';
+  apiPost(body).then(okOrThrow).then(r => {
+    closeAvail();
+    showToast(no ? (r.count ? '已從班表拿掉 ' + r.count + ' 格' : '那些時間本來就沒有班') : (r.count ? '已排進班表（' + r.count + ' 格）' : '那些時間原本就有班，班表不用改'));
+    loadData();
+  }).catch(e => { fail('送出失敗：' + (e.message || '請稍後再試')); avRender(); }).then(() => { avSending = false; });
+}
+
 function closeLeaveReq() { document.getElementById('leaveReqModal').classList.remove('active'); }
 /* ─── Notion 請假連結：?leave=人名&from=YYYY-MM-DD&to=YYYY-MM-DD（只請幾小時再加 &start=13&end=17）───
  * 員工點了打開網頁 → 登入 → 自動打開請假視窗並填好日期，按「送出申請」才送出（一樣要 admin 核准）。
