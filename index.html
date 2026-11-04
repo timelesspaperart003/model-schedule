@@ -1109,7 +1109,7 @@ function ps(name) { const c = personColor(name); return 'background:' + c.bg + '
 
 /* ─── 把每小時的名單合併成「人員時段」：同一人連續的小時併成一段 ─── */
 /* ─── 印切班表疊加：印切的時段換算成半小時一格；跟模型班表同一格重複的人只算一次 ─── */
-const QC_SLOT_RANGE = { early: [8, 8.5], t1: [8, 10.5], t2: [10.5, 12], t3: [12, 13.5], t4: [13.5, 17], t5: [17, 18], t6: [18, 21.5] };   // t6 到 21:10，算到 21:30
+const QC_SLOT_RANGE = { early: [7, 8], t1: [8, 10.5], t2: [10.5, 12], t3: [12, 13.5], t4: [13.5, 17], t5: [17, 18], t6: [18, 21.5] };   // t6 到 21:10，算到 21:30
 function qcAt(slotId, date) {
   const hour = slotById(slotId).hour, ds = dateStr(date), day = DAYS[dayIdx(date)], out = [];
   Object.keys(QC_SLOT_RANGE).forEach(s => {
