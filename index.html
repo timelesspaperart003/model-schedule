@@ -34,6 +34,7 @@
   .header-title { font-size: 21px; font-weight: 700; color: #fff; letter-spacing: -.3px; }
   .header-subtitle { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 1px; }
   .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .header-btns { display: contents; }
 
   .week-nav { display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.2); border-radius: var(--radius-sm); padding: 4px 6px; }
   .week-nav button { background: none; border: none; color: rgba(255,255,255,.85); cursor: pointer; width: 30px; height: 30px; border-radius: var(--radius-xs); display: flex; align-items: center; justify-content: center; font-size: 14px; }
@@ -113,7 +114,8 @@
   .at { border-collapse: separate; border-spacing: 0; width: 100%; }
   .at th, .at td { padding: 0; }
   .at-days th { position: sticky; top: 0; z-index: 12; background: var(--surface-2); height: 46px; font-size: 14px; border-bottom: 1px solid var(--border); border-left: 2px solid var(--border-light); cursor: pointer; }
-  .at.day .at-days th { cursor: default; }
+  .at.day .at-days th { cursor: default; text-align: left; }
+  .at.day .at-dh { position: sticky; left: 60px; display: inline-block; padding-left: 8px; }
   .at-days th small { display: block; font-weight: 500; font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
   .at-days th.today { background: var(--primary-soft); color: var(--primary-text); }
   .at-cnt { font-size: 11px; font-weight: 600; color: var(--at-on-t); background: var(--at-on); padding: 0 6px; border-radius: 8px; margin-left: 4px; }
@@ -145,7 +147,8 @@
   .at-bar.e { bottom: 2px; border-bottom-left-radius: 7px; border-bottom-right-radius: 7px; }
   .at-lbl { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; white-space: nowrap; padding-top: 4px; writing-mode: vertical-rl; letter-spacing: .5px; }
   .at.day .at-lbl { writing-mode: horizontal-tb; font-size: 12px; padding: 6px 3px 0; letter-spacing: 0; white-space: normal; text-align: center; line-height: 1.35; }
-  .at.day .at-bar.s { overflow: visible; overflow-x: clip; }
+  .at.day .at-bar.s { overflow: visible; }
+  .at.day .at-lbl { max-width: 100%; overflow-wrap: anywhere; }
   .at-now { position: absolute; left: 0; right: 0; height: 2px; background: #ef4444; z-index: 3; pointer-events: none; }
   .at tfoot td { position: sticky; bottom: 0; background: var(--surface-2); border-top: 2px solid var(--border-light); height: 34px; font-size: 12px; font-weight: 700; text-align: center; z-index: 4; }
   .at tfoot td.first { border-left: 2px solid var(--border-light); }
@@ -445,16 +448,46 @@
   .bslot-empty { color: var(--text-dim); }
 
   @media (max-width: 768px) {
-    .app-header { padding: 10px 14px; gap: 8px; }
-    .logo-icon { width: 34px; height: 34px; font-size: 18px; }
-    .header-title { font-size: 17px; } .header-subtitle { font-size: 11px; }
+    /* 頂部不常駐，往下捲就把畫面還給班表；所有列都改一排左右滑，不要疊好幾行 */
+    .app-header { padding: 8px 12px; gap: 6px; position: static; }
+    .header-subtitle { display: none; }
+    .header-left { gap: 8px; }
+    .logo-icon { width: 28px !important; height: 28px !important; font-size: 15px !important; }
+    .header-title { font-size: 15px !important; }
+    .header-btns { display: flex; gap: 6px; width: 100%; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    .header-btns::-webkit-scrollbar, .legend-people::-webkit-scrollbar, .at-seg::-webkit-scrollbar, .at-legend::-webkit-scrollbar, .dept-tabs::-webkit-scrollbar { display: none; }
+    .header-btns > * { flex: none; white-space: nowrap; }
+    .week-nav button { height: 26px; }
+    .btn-today { padding: 3px 10px; }
+    .dept-tabs { padding: 8px 12px 0; scrollbar-width: none; }
+    .dept-tab { font-size: 12px; padding: 4px 11px; flex: none; }
+    .legend-bar { flex-wrap: nowrap; flex-direction: column; align-items: stretch; gap: 6px; padding: 6px 12px; }
+    .legend-bar .legend-item { display: none; }
+    .view-toggle { align-self: flex-start; }
+    .legend-people { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    .legend-people .person-chip { flex: none; white-space: nowrap; padding: 2px 9px; }
+    .at-tools { gap: 6px; display: grid; grid-template-columns: minmax(0, 1fr); margin-bottom: 6px; }
+    .at-seg { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .at-seg button { flex: none; padding: 4px 10px; }
+    .at-legend { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: 0; gap: 10px; font-size: 11px; white-space: nowrap; }
+    .at-legend span { flex: none; }
+    .at-scroll { max-height: calc(100vh - 12px); max-height: calc(100dvh - 12px); }
+    .at-days th { height: 38px; font-size: 13px; }
+    .at-names th { top: 38px; }
+    .at-corner { width: 44px; min-width: 44px; }
+    .at-time { font-size: 10px; padding: 0 4px 0 2px !important; }
+    .at.day .at-dh { left: 48px; }
+    .at.day .at-c { min-width: 64px; }
+    .at.day .at-nm { padding: 4px 6px; font-size: 12px; }
+    .at.day .at-lbl { font-size: 11px; padding: 4px 2px 0; }
+    /* 意見回饋縮成小圓鈕，不要蓋住班表（按鈕是共用外掛產生的，所以要 !important） */
+    .fbw-btn { width: 40px !important; height: 40px !important; padding: 0 0 0 10px !important; overflow: hidden !important; white-space: nowrap !important; text-align: left !important; font-size: 16px !important; right: 10px !important; bottom: 10px !important; border-radius: 50% !important; display: block !important; }
     .header-right { width: 100%; }
     .week-today-row { width: 100%; }
     .week-nav { flex: 1; }
     .week-label { min-width: 0; font-size: 12px; flex: 1; }
-    .btn-header { font-size: 11px; padding: 5px 9px; }
+    .btn-header { font-size: 11px; padding: 4px 8px; }
     .setup-banner { padding: 8px 14px; }
-    .legend-bar { padding: 8px 14px; gap: 10px; }
     .legend-people { margin-left: 0; width: 100%; }
     .schedule-wrapper { padding: 12px 8px 30px; }
     .cards { grid-template-columns: 1fr; gap: 10px; min-width: 0; }
@@ -491,6 +524,7 @@
       </div>
       <button class="btn-today" id="btnToday" onclick="goToday()" title="回到本週">TODAY</button>
     </div>
+    <div class="header-btns">
     <button class="btn-header need-login" onclick="loadData(true)" title="重新載入雲端資料">⟳ 同步</button>
     <button class="btn-header admin-only" onclick="openBatch()" title="在月曆上一次排多天的班">🗓️ 批量排班</button>
     <button class="btn-header staff-ft" onclick="openLeaveReq('leave')" title="申請請假，主管核准後自動從班表拿掉">🙋 請假</button>
@@ -500,6 +534,7 @@
     <button class="btn-header admin-only" onclick="openHistoryAuth()" title="待審核與修改記錄">📋 記錄 <span class="pending-count" id="headerPending"></span></button>
     <button class="btn-header admin-only" onclick="resetToDefault()" title="清除所有臨時調整與待審核">↺ 還原</button>
     <div id="authBox" class="auth-box"></div>
+    </div>
   </div>
 </header>
 <div class="setup-banner" id="setupBanner">⚠️ 尚未設定後端網址：請依「部署說明.md」部署 Google Apps Script，再把網址填進 index.html 的 <code>API_URL</code>。</div>
@@ -1234,6 +1269,8 @@ function renderView() {
   else h = renderAttend(dates);
   document.getElementById('scheduleView').innerHTML = h;
   bindAttendHover();
+  const seg = document.querySelector('.at-seg'), on = seg && seg.querySelector('button.on');
+  if (on && seg.scrollWidth > seg.clientWidth) seg.scrollLeft = on.offsetLeft - (seg.clientWidth - on.offsetWidth) / 2;
 }
 
 /* ─── 📊 時間軸（出勤一覽）：每天下面固定一排人名（照排序），往下看那一欄就知道那個人幾點在 ───
@@ -1282,9 +1319,9 @@ function renderAttend(all) {
   h += '<div class="at-scroll"><table class="at' + (week ? '' : ' day') + '"><thead><tr class="at-days"><th class="at-corner"></th>';
   idxs.forEach((di, k) => {
     const d = all[di], present = S[k].filter(st => st.some(x => isWork(x.s))).length, absent = S[k].filter(st => st.some(x => isMiss(x.s))).length, pc = pendCount(d);
-    h += '<th colspan="' + N + '" class="' + (isToday(d) ? 'today' : '') + '"' + (week ? ' onclick="setTlDay(' + di + ')" title="放大看這天"' : '') + '>週' + DAYS[di] +
+    h += '<th colspan="' + N + '" class="' + (isToday(d) ? 'today' : '') + '"' + (week ? ' onclick="setTlDay(' + di + ')" title="放大看這天"' : '') + '><div class="at-dh">週' + DAYS[di] +
       (isToday(d) ? '<span class="today-badge">今天</span>' : '') + ' <span class="at-cnt">' + present + ' 人</span>' + (absent ? '<span class="at-cnt bad">' + absent + ' 請假</span>' : '') +
-      (pc ? '<span class="at-cnt pend">待審核 ' + pc + '</span>' : '') + '<small>' + (d.getMonth() + 1) + '/' + d.getDate() + '</small></th>';
+      (pc ? '<span class="at-cnt pend">待審核 ' + pc + '</span>' : '') + '<small>' + (d.getMonth() + 1) + '/' + d.getDate() + '</small></div></th>';
   });
   h += '</tr><tr class="at-names"><th class="at-corner"></th>';
   idxs.forEach((di, k) => names.forEach((n, pi) => {
