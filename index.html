@@ -284,6 +284,7 @@
   .guest-pw { display: flex; flex-direction: column; gap: 8px; }
   .guest-pw .form-input { width: 100%; }
   .guest-pw .btn { justify-content: center; padding: 10px; font-size: 14px; }
+  .guest-link { background: #fdf3e7; border: 1px solid #f3d3a8; color: #8a4b12; border-radius: 10px; padding: 9px 12px; font-size: 13px; margin: 6px 0 14px; }
   .guest-hint { font-size: 12px !important; color: var(--text-dim) !important; margin-top: 14px; }
   /* 員工個人頁 */
   .me { max-width: 1100px; margin: 0 auto; }
@@ -324,6 +325,7 @@
   .ss-list { max-height: 55vh; overflow-y: auto; }
   .ss-row { display: grid; grid-template-columns: 80px minmax(0, 1.4fr) 88px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
   .ss-nm { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; } .ss-nm i { width: 8px; height: 8px; border-radius: 50%; }
+  .sl-rename-hint { font-size: 13px; color: #6b7280; margin-top: 8px; line-height: 1.5; }
   .ss-row .form-input { font-size: 13px; padding: 7px 9px; }
   @media (max-width: 760px) {
     .me-days { grid-template-columns: 1fr; }
@@ -550,8 +552,10 @@
     <div class="history-tabs" style="margin:-4px -20px 12px">
       <button class="history-tab active" id="slTabLeave" onclick="slSwitch('leave')">不再排班</button>
       <button class="history-tab" id="slTabNote" onclick="slSwitch('note')">✏️ 修正備註</button>
+      <button class="history-tab" id="slTabName" onclick="slSwitch('name')">🏷️ 改名</button>
     </div>
     <div class="scope-desc" id="slDescLeave">設定這個人從某天起不再排進固定班表，<b>之前的週次班表會保留原樣</b>，不會被回溯修改。</div>
+    <div class="scope-desc" id="slDescName" style="display:none">班表（含過去週次）、待審核、排序、人員設定、請假紀錄會<b>一起改成新名字</b>，登入和顏色都不變；「📋 記錄」裡的舊紀錄保留原名。</div>
     <div class="scope-desc" id="slDescNote" style="display:none">把這個人某個備註<b>全部</b>改掉（固定班表＋所有日期的臨時調整），例如打錯字。新備註留空＝刪掉這個備註。</div>
     <div style="margin-bottom:10px">
       <label class="field-label">姓名</label>
@@ -567,6 +571,11 @@
       <select class="form-input" id="slOldNote" style="width:100%;margin-bottom:10px"></select>
       <label class="field-label">改成</label>
       <input type="text" class="form-input" id="slNewNote" placeholder="新備註（留空＝刪除備註）" autocomplete="off" style="width:100%">
+    </div>
+    <div id="slNameFields" style="display:none;margin-bottom:12px;text-align:left">
+      <label class="field-label">新名字</label>
+      <input type="text" class="form-input" id="slNewName" placeholder="輸入新名字" maxlength="20" autocomplete="off" style="width:100%" oninput="slFillNotes()">
+      <div class="sl-rename-hint" id="slRenameHint"></div>
     </div>
     <div class="scope-pw-row">
       <button class="scope-pw-confirm" style="flex:1" onclick="confirmStaffLeave()">確認</button>
@@ -794,9 +803,16 @@ function loadData() {
     showToast('載入你的班表中...');
     return apiPost({ action: 'readMine' }).then(data => {
       if (data.error || !data.template) throw new Error(data.error || '回傳格式錯誤');
+      if (data.name && data.name !== session.name) {   // admin 幫他改過名字：這台裝置記的也跟著換，不用重新登入
+        session.name = data.name;
+        try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {}
+      }
+      settings = { renames: {} };
+      (data.formerNames || []).forEach(o => { settings.renames[o] = data.name; });
       scheduleData = data.template; overrides = data.overrides || {}; leaves = data.leaves || [];
       myRequests = data.myRequests || []; myAvail = data.myAvail || [];
       renderAll();
+      tryLeaveLink();
     }).catch(e => showToast('載入失敗：' + (e.message || '請重新整理')));
   }
   const cached = readCache();
@@ -972,15 +988,21 @@ function nameHash(name) { let h = 0; for (let i = 0; i < name.length; i++) h = (
 function rebuildColors() {
   colorMap = {};
   const used = {};
-  knownNames().filter(n => !PERSON_COLORS[n]).sort().forEach(n => {
+  knownNames().filter(n => !fixedColor(n)).sort().forEach(n => {
     let i = nameHash(n) % AUTO_COLORS.length;
     for (let k = 0; k < AUTO_COLORS.length && used[i]; k++) i = (i + 1) % AUTO_COLORS.length;
     used[i] = 1;
     colorMap[n] = AUTO_COLORS[i];
   });
 }
+// 固定顏色寫在 PERSON_COLORS；改過名的人沿用舊名的顏色（settings.renames ＝ { 舊名: 現在的名字 }）
+function fixedColor(name) {
+  if (PERSON_COLORS[name]) return PERSON_COLORS[name];
+  const r = settings.renames || {}, old = Object.keys(r).find(o => r[o] === name && PERSON_COLORS[o]);
+  return old ? PERSON_COLORS[old] : null;
+}
 function personColor(name) {
-  return PERSON_COLORS[name] || colorMap[name] || AUTO_COLORS[nameHash(name) % AUTO_COLORS.length];
+  return fixedColor(name) || colorMap[name] || AUTO_COLORS[nameHash(name) % AUTO_COLORS.length];
 }
 function ps(name) { const c = personColor(name); return 'background:' + c.bg + ';border-color:' + c.border + ';color:' + c.text; }
 
@@ -1166,6 +1188,7 @@ function switchMe() { setSession(Object.assign({}, session, { name: '', type: ''
 /* ─── 沒登入：登入畫面 ─── */
 function renderGuest() {
   return '<div class="guest"><div class="guest-card"><div class="guest-logo">🧩</div><h2>模型部排班表</h2>' +
+    (LEAVE_LINK && !linkUsed ? '<div class="guest-link">🙋 登入後會幫你帶入請假：<b>' + esc(LEAVE_LINK.name) + '</b>　' + esc(leaveLinkText(LEAVE_LINK)) + '</div>' : '') +
     '<p>請登入查看你的班表</p><div id="gBtnBig" class="guest-btn"></div>' +
     '<div class="guest-or"><span>承攬制用帳號密碼登入</span></div>' +
     '<div class="guest-pw"><input class="form-input" id="pwUser" placeholder="帳號" autocomplete="username">' +
@@ -1431,6 +1454,36 @@ function openLeaveReq(mode) {
   document.getElementById('leaveReqModal').classList.add('active');
 }
 function closeLeaveReq() { document.getElementById('leaveReqModal').classList.remove('active'); }
+/* ─── Notion 請假連結：?leave=人名&from=YYYY-MM-DD&to=YYYY-MM-DD（只請幾小時再加 &start=13&end=17）───
+ * 員工點了打開網頁 → 登入 → 自動打開請假視窗並填好日期，按「送出申請」才送出（一樣要 admin 核准）。
+ * 連結上的人名要跟登入的人一樣；承攬制不能用（他們是回報可接案）。用過一次就從網址拿掉，重新整理不會再跳。 */
+const LEAVE_LINK = (() => {
+  const q = new URLSearchParams(location.search), name = (q.get('leave') || '').trim(), re = /^\d{4}-\d{2}-\d{2}$/;
+  if (!name) return null;
+  const from = q.get('from') || '', to = q.get('to') || from, s = parseInt(q.get('start'), 10), e = parseInt(q.get('end'), 10);
+  const hours = s >= 8 && e <= 22 && s < e;
+  return { name: name, from: re.test(from) ? from : '', to: re.test(to) && to >= from ? to : from, start: hours ? s : null, end: hours ? e : null };
+})();
+let linkUsed = false;
+function leaveLinkText(L) {
+  if (!L.from) return '（連結上沒有日期）';
+  return leaveReqText({ from: L.from, to: L.to, startHour: L.start, endHour: L.end });
+}
+function tryLeaveLink() {
+  if (!LEAVE_LINK || linkUsed || !isStaff()) return;
+  linkUsed = true;
+  try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  if (LEAVE_LINK.name !== session.name) { alert('這個請假連結是「' + LEAVE_LINK.name + '」的，你登入的是「' + session.name + '」。\n只能幫自己請假，請確認 Notion 那一列的人名。'); return; }
+  if (session.type === '承攬') { alert('承攬制不用請假，請改用「📥 回報可接案」填你可以接案的時段。'); return; }
+  if (!LEAVE_LINK.from) { alert('這個請假連結沒有日期，請確認 Notion 的日期欄位有填。'); return; }
+  openLeaveReq('leave');
+  document.getElementById('lrFrom').value = LEAVE_LINK.from;
+  document.getElementById('lrTo').value = LEAVE_LINK.to;
+  document.getElementById('lrAllDay').checked = LEAVE_LINK.start == null;
+  lrToggleHours();
+  if (LEAVE_LINK.start != null) { document.getElementById('lrStart').value = LEAVE_LINK.start; document.getElementById('lrEnd').value = LEAVE_LINK.end; }
+  document.getElementById('lrDesc').innerHTML = '📝 已從 Notion 帶入，<b>確認日期沒錯就按「送出申請」</b>。核准後會自動從班表拿掉這段時間的班。';
+}
 function lrToggleHours() { document.getElementById('lrHours').style.display = document.getElementById('lrAllDay').checked ? 'none' : ''; }
 function lrFromChanged() { const f = document.getElementById('lrFrom'), t = document.getElementById('lrTo'); if (!t.value || t.value < f.value) t.value = f.value; }
 
@@ -1810,6 +1863,7 @@ function openStaffLeave() {
   document.getElementById('slDate').value = dateStr(new Date());
   document.getElementById('slError').style.display = 'none';
   document.getElementById('slNewNote').value = '';
+  document.getElementById('slNewName').value = '';
   slSwitch('leave');
   document.getElementById('staffLeaveModal').classList.add('active');
   setTimeout(() => document.getElementById('slName').focus(), 50);
@@ -1819,17 +1873,19 @@ function closeStaffLeave() { document.getElementById('staffLeaveModal').classLis
 let slMode = 'leave';
 function slSwitch(mode) {
   slMode = mode;
-  const leave = mode === 'leave';
-  document.getElementById('slTabLeave').classList.toggle('active', leave);
-  document.getElementById('slTabNote').classList.toggle('active', !leave);
-  document.getElementById('slDescLeave').style.display = leave ? '' : 'none';
-  document.getElementById('slDescNote').style.display = leave ? 'none' : '';
-  document.getElementById('slLeaveFields').style.display = leave ? '' : 'none';
-  document.getElementById('slNoteFields').style.display = leave ? 'none' : '';
+  [['Leave', 'leave'], ['Note', 'note'], ['Name', 'name']].forEach(([id, m]) => {
+    const on = mode === m;
+    document.getElementById('slTab' + id).classList.toggle('active', on);
+    document.getElementById('slDesc' + id).style.display = on ? '' : 'none';
+    document.getElementById('sl' + id + 'Fields').style.display = on ? '' : 'none';
+  });
+  document.getElementById('slNameList').innerHTML = (mode === 'name' ? renameableNames() : knownNames()).map(n => '<option value="' + esc(n) + '">').join('');
+  document.getElementById('slError').style.display = 'none';
   slFillNotes();
 }
 // 列出這個人目前用過的備註（固定班表＋臨時調整），附上出現幾格
 function slFillNotes() {
+  if (slMode === 'name') { slRenameHint(); return; }
   if (slMode !== 'note') return;
   const name = document.getElementById('slName').value.trim(), count = {};
   [scheduleData, overrides].forEach(src => Object.keys(src).forEach(k => people(src[k]).forEach(p => {
@@ -1841,7 +1897,42 @@ function slFillNotes() {
     : '<option value="">' + (name ? '這個人沒有備註' : '先選姓名') + '</option>';
 }
 
+// 改名前先算會動到幾格；只有人員設定或排序裡有、班表沒排的人也可以改
+function renameableNames() { return [...new Set(knownNames().concat(Object.keys(settings.staff || {}), settings.order || []))]; }
+function slRenameHint() {
+  const oldName = document.getElementById('slName').value.trim(), newName = document.getElementById('slNewName').value.trim();
+  const el = document.getElementById('slRenameHint');
+  if (!oldName || !renameableNames().includes(oldName)) { el.textContent = ''; return; }
+  const count = src => Object.keys(src).filter(k => people(src[k]).some(p => p.name === oldName)).length;
+  el.textContent = oldName + (newName ? ' → ' + newName : '') + '：固定班表 ' + count(scheduleData) + ' 格、臨時調整 ' + count(overrides) + ' 格';
+}
+function confirmRename() {
+  const oldName = document.getElementById('slName').value.trim(), newName = document.getElementById('slNewName').value.trim();
+  const errEl = document.getElementById('slError');
+  const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  if (!oldName) { fail('請選擇要改名的人'); return; }
+  if (!renameableNames().includes(oldName)) { fail('找不到「' + oldName + '」，請從清單選'); return; }
+  if (!newName) { fail('請輸入新名字'); return; }
+  if (oldName === newName) { fail('新名字跟原本一樣'); return; }
+  const clash = renameableNames().find(n => n !== oldName && n.toLowerCase() === newName.toLowerCase());
+  if (clash) { fail('「' + clash + '」已經有人用了，請換一個名字'); return; }
+  requireAdmin().then(matched => {
+    if (!matched) return;
+    showToast('改名中...');
+    apiPost({ action: 'renamePerson', oldName: oldName, newName: newName })
+      .then(okOrThrow)
+      .then(resp => {
+        if (filterPeople[oldName]) { delete filterPeople[oldName]; filterPeople[newName] = 1; }
+        closeStaffLeave();
+        showToast('已把 ' + oldName + ' 改成 ' + newName + '（班表共 ' + resp.count + ' 格）');
+        loadData();
+      })
+      .catch(e => fail('改名失敗：' + (e.message || '請重試')));
+  });
+}
+
 function confirmStaffLeave() {
+  if (slMode === 'name') { confirmRename(); return; }
   if (slMode === 'note') { confirmReplaceNote(); return; }
   const name = document.getElementById('slName').value.trim(), eDate = document.getElementById('slDate').value;
   const errEl = document.getElementById('slError');
