@@ -292,6 +292,9 @@
   .lv-today-list .lv-row { margin-bottom: 0; }
   .card-hd .lv-badge { background: var(--at-leave); }
   body:not(.is-admin) .admin-only { display: none !important; }
+  body:not(.is-admin):not(.is-manager) .board-only { display: none !important; }
+  body:not(.p-edit) .need-edit, body:not(.p-review) .need-review, body:not(.p-approve) .need-approve,
+  body:not(.p-people) .need-people, body:not(.p-log) .need-log, body:not(.p-direct) .need-direct { display: none !important; }
   body:not(.is-staff-ft) .staff-ft, body:not(.is-staff-ct) .staff-ct { display: none !important; }
   body.is-guest .need-login { display: none !important; }
   /* 登入畫面 */
@@ -358,6 +361,11 @@
   .ss-del:hover { background: #fee2e2; color: #b91c1c; }
   .ss-depts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--text-muted); padding: 0 0 2px 86px; }
   .ss-depts label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .ss-perm { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; padding: 0 0 2px 86px; color: var(--text-secondary); }
+  .ss-perm label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .ss-mgrbox { flex-basis: 100%; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 6px 10px; display: flex; flex-direction: column; gap: 4px; }
+  .ss-mgrbox > div { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+  .ss-mgrbox b { font-size: 12px; color: #5b21b6; margin-right: 2px; }
   .ss-row { display: grid; grid-template-columns: 80px minmax(0, 1.4fr) 88px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
   .ss-nm { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; } .ss-nm i { width: 8px; height: 8px; border-radius: 50%; }
   .sl-rename-hint { font-size: 13px; color: #6b7280; margin-top: 8px; line-height: 1.5; }
@@ -368,7 +376,7 @@
     .me-day .me-dh { grid-column: 1; grid-row: 1 / span 4; flex-direction: column; align-items: flex-start; gap: 0; }
     .me-day > :not(.me-dh) { grid-column: 2; }
     .me-act { width: 100%; margin-left: 0; }
-    .ss-row { grid-template-columns: 1fr 1fr; } .ss-nm { grid-column: span 2; } .ss-depts { padding-left: 0; }
+    .ss-row { grid-template-columns: 1fr 1fr; } .ss-nm { grid-column: span 2; } .ss-depts, .ss-perm { padding-left: 0; }
   }
   .auth-box { display: flex; align-items: center; min-height: 32px; }
   .order-list { max-height: 50vh; overflow-y: auto; margin-bottom: 12px; text-align: left; }
@@ -551,20 +559,20 @@
     </div>
     <div class="header-btns">
     <button class="btn-header need-login" onclick="loadData(true)" title="重新載入雲端資料">⟳ 同步</button>
-    <button class="btn-header admin-only" onclick="openBatch()" title="在月曆上一次排多天的班">🗓️ 批量排班</button>
+    <button class="btn-header need-edit" onclick="openBatch()" title="在月曆上一次排多天的班">🗓️ 批量排班</button>
     <button class="btn-header staff-ft" onclick="openLeaveReq('leave')" title="申請請假，主管核准後自動從班表拿掉">🙋 請假</button>
     <button class="btn-header staff-ct" onclick="openLeaveReq('avail')" title="回報可以接案的日期和時段，直接排進班表">📥 回報可接案</button>
     <button class="btn-header admin-only" onclick="openStaffSetup()" title="設定每個人的 Gmail、正職或承攬制">👤 人員設定</button>
-    <button class="btn-header admin-only" onclick="openStaffLeave()" title="設定人員從某天起不再排班，之前的班表不受影響">👋 人員異動</button>
-    <button class="btn-header admin-only" onclick="openHistoryAuth()" title="待審核與修改記錄">📋 記錄 <span class="pending-count" id="headerPending"></span></button>
+    <button class="btn-header need-people" onclick="openStaffLeave()" title="設定人員從某天起不再排班，之前的班表不受影響">👋 人員異動</button>
+    <button class="btn-header need-review" onclick="openHistoryAuth()" title="待審核與修改記錄">📋 記錄 <span class="pending-count" id="headerPending"></span></button>
     <button class="btn-header admin-only" onclick="resetToDefault()" title="清除所有臨時調整與待審核">↺ 還原</button>
     <div id="authBox" class="auth-box"></div>
     </div>
   </div>
 </header>
 <div class="setup-banner" id="setupBanner">⚠️ 尚未設定後端網址：請依「部署說明.md」部署 Google Apps Script，再把網址填進 index.html 的 <code>API_URL</code>。</div>
-<div class="dept-tabs admin-only" id="deptTabs"></div>
-<div class="legend-bar admin-only">
+<div class="dept-tabs board-only" id="deptTabs"></div>
+<div class="legend-bar board-only">
   <div class="view-toggle">
     <button class="view-btn" data-v="timeline" onclick="setView('timeline')" title="原本的直向時間軸">📊 時間軸</button>
     <button class="view-btn" data-v="cards" onclick="setView('cards')">🗂️ 卡片</button>
@@ -576,7 +584,7 @@
 </div>
 <div class="schedule-wrapper">
   <div id="scheduleView"></div>
-  <div class="notes-section admin-only">
+  <div class="notes-section board-only">
     <div class="notes-title">📋 使用說明</div>
     <div class="notes-content">
       上方可切換版面：「📊 時間軸」每天下面固定一排人名，綠＝有上班（上面寫時間和時數）、紅＝請假／臨時取消，可切整週或放大單日；「🗂️ 卡片」一天一張；「🏖️ 請假」這週誰請假。點格子就能編輯那天。<br>
@@ -623,8 +631,11 @@
       </div>
     </div>
     <div id="scopeStep2" style="display:none;">
-      <div class="scope-pw-row admin-only">
-        <button class="scope-pw-confirm" style="flex:1" onclick="confirmWithPassword()">✓ 以 admin 身分直接儲存</button>
+      <div class="scope-pw-row need-direct">
+        <button class="scope-pw-confirm" style="flex:1" onclick="confirmWithPassword()">✓ 直接儲存（馬上生效）</button>
+      </div>
+      <div class="scope-pw-row" id="scopeMgrPending" style="display:none">
+        <button class="scope-pw-confirm" style="flex:1;background:#64748b" onclick="confirmMgrPending()">📤 送 admin 審核</button>
       </div>
       <div class="scope-pw-row" id="scopeNeedLogin" style="display:none">
         <div class="scope-desc" style="margin:0">這個動作需要 admin，請先關掉視窗、按右上角用 Google 登入。</div>
@@ -847,7 +858,7 @@
     <div class="modal-header"><h3>管理面板</h3><button class="modal-close" onclick="closeHistory()">✕</button></div>
     <div class="history-tabs">
       <button class="history-tab active" id="tabPending" onclick="switchHistoryTab('pending')">⏳ 待審核 <span class="pending-count" id="pendingCount"></span></button>
-      <button class="history-tab" id="tabLog" onclick="switchHistoryTab('log')">📋 修改記錄</button>
+      <button class="history-tab need-log" id="tabLog" onclick="switchHistoryTab('log')">📋 修改記錄</button>
     </div>
     <div class="hist-tools"><button class="btn" onclick="cleanOverrides()" title="只刪「跟固定班表完全一樣」的臨時調整，畫面上的班不會改變">🧹 清除多餘的臨時調整</button></div>
     <div class="modal-body" id="historyBody"></div>
@@ -933,7 +944,7 @@ function renderAll() {
 const CACHE_KEY = 'modelScheduleCache_v2';
 try { localStorage.removeItem('modelScheduleCache_v1'); localStorage.removeItem('modelScheduleMineCache_v1'); } catch (e) {}
 function readCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { return null; } }
-function writeCache() { if (!isAdmin()) return; try { localStorage.setItem(CACHE_KEY, JSON.stringify({ template: scheduleData, overrides: overrides, pending: pendingData, leaveReqs: leaveReqs, settings: settings, leaves: leaves, qc: qcCells })); } catch (e) { try { localStorage.removeItem(CACHE_KEY); } catch (e2) {} } }
+function writeCache() { if (!isBoard()) return; try { localStorage.setItem(CACHE_KEY, JSON.stringify({ template: scheduleData, overrides: overrides, pending: pendingData, leaveReqs: leaveReqs, settings: settings, leaves: leaves, qc: qcCells })); } catch (e) { try { localStorage.removeItem(CACHE_KEY); } catch (e2) {} } }
 function clearData() { qcCells = {}; scheduleData = {}; overrides = {}; pendingData = []; leaveReqs = []; settings = {}; leaves = []; myRequests = []; myAvail = []; }
 
 // 依登入身分載入：admin＝完整班表；員工＝只有自己的班；沒登入＝什麼都不載入（顯示登入畫面）
@@ -955,7 +966,7 @@ function loadData(fresh) {
   // 剛寫入過：直接跟後端要最新的，也不要先畫一次瀏覽器存的舊班表
   fresh = fresh === true || Date.now() < writeFreshUntil;
   const seq = ++loadSeq;
-  if (!isAdmin()) {
+  if (!isBoard()) {
     // 只有真的登出才清快取；Google 登入一小時過期、自動換新時要留著，換好馬上顯示
     if (!session) try { localStorage.removeItem(CACHE_KEY); localStorage.removeItem(MINE_CACHE_KEY); } catch (e) {}
     if (!fresh || !isStaff()) clearData();
@@ -995,6 +1006,11 @@ function loadData(fresh) {
     .then(data => {
       if (seq !== loadSeq) return;
       if (data.error || !data.template) throw new Error(data.error || '回傳格式錯誤');
+      if (data.me && isManager()) {   // 權限以後端為準（admin 改過權限，這裡跟著更新）
+        session.perms = data.me.perms; session.depts = data.me.depts;
+        try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {}
+        applyRole();
+      }
       scheduleData = data.template; overrides = data.overrides || {}; pendingData = data.pending || [];
       leaveReqs = data.leaveRequests || []; settings = data.settings || {}; leaves = data.leaves || []; qcCells = data.qc || {};
       writeCache();
@@ -1016,19 +1032,30 @@ let authMsg = '';     // 登入畫面上的提示（例如帳號還沒登記）
 let myRequests = [], myAvail = [];   // 員工個人頁：自己的請假申請／可接案回報
 function sessionOk() { return !!(session && session.exp * 1000 > Date.now() + 30000); }
 function isAdmin() { return sessionOk() && session.role === 'admin'; }
+// 有管理權限的人（部門主管）：看他負責部門的班表，能做的事依「👤 人員設定」勾的權限
+function isManager() { return sessionOk() && session.role === 'manager' && !!session.name; }
+function isBoard() { return isAdmin() || isManager(); }
+function can(p) {
+  if (isAdmin()) return true;
+  if (!isManager()) return false;
+  const x = session.perms || {};
+  if (p === 'edit') return !!(x.editDirect || x.editPending);
+  if (p === 'review') return !!(x.approve || x.log);
+  return !!x[p];
+}
 function isStaff() { return sessionOk() && session.role === 'staff' && !!session.name; }
-function needPick() { return sessionOk() && session.role === 'staff' && !session.name; }
+function needPick() { return sessionOk() && (session.role === 'staff' || session.role === 'manager') && !session.name; }
 const READ_ACTIONS = { whoami: 1, loginPw: 1, read: 1, readMine: 1, readLog: 1 };
 let writeFreshUntil = 0;
 const READ_TIMEOUT = 45000;
 function apiPost(body) {
   if (!API_URL) return Promise.reject(new Error('尚未設定 API_URL'));
   if (!READ_ACTIONS[body.action]) writeFreshUntil = Date.now() + 60000;
-  if (sessionOk() && !body.idToken && !body.pwToken) body = Object.assign(session.pwToken ? { pwToken: session.pwToken } : { idToken: session.token }, session.name && session.role === 'staff' && !session.pwToken ? { asName: session.name } : {}, body);
+  if (sessionOk() && !body.idToken && !body.pwToken) body = Object.assign(session.pwToken ? { pwToken: session.pwToken } : { idToken: session.token }, session.name && session.role !== 'admin' && !session.pwToken ? { asName: session.name } : {}, body);
   const req = fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(body) }).then(r => r.json());
   const timed = !READ_ACTIONS[body.action] ? req : Promise.race([req, new Promise((_, no) => setTimeout(() => no(new Error('連線逾時')), READ_TIMEOUT))]);
   return timed.then(resp => {
-    if (resp && /登入已過期/.test(resp.error || '')) { const g = session && !session.pwToken; authMsg = '登入已過期，請重新登入'; setSession(null); if (g) googlePrompt(); }
+    if (resp && /登入已過期|已停用/.test(resp.error || '')) { const g = session && !session.pwToken; authMsg = '登入已過期，請重新登入'; setSession(null); if (g) googlePrompt(); }
     return resp;
   });
 }
@@ -1048,10 +1075,13 @@ function setSession(s) {
 function applyRole() {
   const b = document.body.classList;
   b.toggle('is-admin', isAdmin());
+  b.toggle('is-manager', isManager());
+  ['edit', 'review', 'approve', 'people', 'log'].forEach(p => b.toggle('p-' + p, can(p)));
+  b.toggle('p-direct', can('editDirect'));
   b.toggle('is-staff', isStaff());
-  b.toggle('is-staff-ft', isStaff() && session.type !== '承攬');
+  b.toggle('is-staff-ft', (isStaff() || isManager()) && session.type !== '承攬');
   b.toggle('is-staff-ct', isStaff() && session.type === '承攬');
-  b.toggle('is-guest', !isAdmin() && !isStaff());   // 共用帳號還沒選名字也算 guest（只看得到選名字的畫面）
+  b.toggle('is-guest', !isBoard() && !isStaff());   // 共用帳號還沒選名字也算 guest（只看得到選名字的畫面）
   renderAuthBox();
 }
 function gButton(el, size) {
@@ -1080,7 +1110,7 @@ function onGoogleCredential(resp) {
     signingIn = false;
     if (r && r.success) {
       authMsg = '';
-      setSession({ token: token, exp: info.exp, role: r.role, name: r.name || '', type: r.type || '', email: r.email, choices: r.choices || null });
+      setSession({ token: token, exp: info.exp, role: r.role, name: r.name || '', type: r.type || '', email: r.email, choices: r.choices || null, perms: r.perms || null, depts: r.depts || null });
       showToast(r.name ? r.name + ' 已登入' : '請選你的名字');
     }
     else { authMsg = (r && r.error) || '登入失敗'; setSession(null); showToast(authMsg); }
@@ -1101,6 +1131,12 @@ function signOut() {
   authMsg = ''; setSession(null); showToast('已登出');
 }
 // admin 動作前呼叫：已登入回傳名稱，沒登入回傳 null 並提示登入
+// 依權限檢查：有權限回傳名字；主管沒這個權限就提示
+function requirePerm(p) {
+  if (can(p)) return Promise.resolve(session.name);
+  if (isManager()) { showToast('你沒有這個權限，請找 admin'); return Promise.resolve(null); }
+  return requireAdmin();
+}
 function requireAdmin() {
   if (isAdmin()) return Promise.resolve(session.name);
   showToast('這個動作需要 admin，請先按右上角用 Google 登入');
@@ -1221,8 +1257,11 @@ function deptsOf(name) {
 }
 function inDept(name) { return deptTab === '全公司' || deptsOf(name).indexOf(deptTab) >= 0 || (deptTab === '印切' && !!qcNames[name]); }
 function setDept(d) { deptTab = d; filterPeople = {}; try { localStorage.setItem(DEPT_KEY, d); } catch (e) {} renderDeptTabs(); renderLegend(); renderView(); }
+// 主管只看得到他負責的部門
+function visibleDepts() { return isManager() ? DEPTS.filter(d => d === '全公司' || (session.depts || []).indexOf(d) >= 0) : DEPTS; }
 function renderDeptTabs() {
-  document.getElementById('deptTabs').innerHTML = DEPTS.map(d => '<button class="dept-tab' + (d === deptTab ? ' active' : '') + '" data-d="' + esc(d) + '" onclick="setDept(this.dataset.d)">' + esc(d) + '</button>').join('');
+  if (visibleDepts().indexOf(deptTab) < 0) deptTab = '全公司';
+  document.getElementById('deptTabs').innerHTML = visibleDepts().map(d => '<button class="dept-tab' + (d === deptTab ? ' active' : '') + '" data-d="' + esc(d) + '" onclick="setDept(this.dataset.d)">' + esc(d) + '</button>').join('');
 }
 
 function daySegments(date) {
@@ -1283,8 +1322,8 @@ function setView(v) { viewMode = v; try { localStorage.setItem(VIEW_KEY, v); } c
 function renderView() {
   const dates = getWeekDates(currentWeekOffset);
   document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.v === viewMode));
-  // 不是 admin：員工看自己的班表、沒登入看登入畫面
-  if (!isAdmin()) {
+  // 不是 admin／主管：員工看自己的班表、沒登入看登入畫面
+  if (!isBoard()) {
     document.getElementById('scheduleView').innerHTML = isStaff() ? renderMine(dates) : needPick() ? renderPick() : renderGuest();
     gButton(document.getElementById('gBtnBig'), 'large');
     return;
@@ -1408,10 +1447,10 @@ function renderPick() {
 function pickMe(name) {
   const c = (session.choices || []).find(x => x.name === name);
   if (!c) return;
-  setSession(Object.assign({}, session, { name: c.name, type: c.type }));
+  setSession(Object.assign({}, session, { name: c.name, type: c.type, role: c.mgr ? 'manager' : 'staff', perms: c.perms || null, depts: c.depts || null }));
   showToast(c.name + ' 已登入');
 }
-function switchMe() { setSession(Object.assign({}, session, { name: '', type: '' })); }
+function switchMe() { setSession(Object.assign({}, session, { name: '', type: '', role: 'staff', perms: null, depts: null })); }
 
 /* ─── 沒登入：登入畫面 ─── */
 // LINE、Facebook、Instagram 等 App 內建的瀏覽器，Google 登入常被擋，要改用手機的瀏覽器開
@@ -1442,7 +1481,7 @@ function loginWithPw() {
   if (pwBusy) return;
   pwBusy = true; const btn = document.getElementById('pwBtn'); btn.disabled = true; btn.textContent = '登入中…';
   apiPost({ action: 'loginPw', user: user, password: pw }).then(r => {
-    if (r && r.success) { authMsg = ''; setSession({ pwToken: r.pwToken, exp: r.exp, role: 'staff', name: r.name, type: r.type, user: user }); showToast(r.name + ' 已登入'); }
+    if (r && r.success) { authMsg = ''; setSession({ pwToken: r.pwToken, exp: r.exp, role: r.role || 'staff', name: r.name, type: r.type, user: user, perms: r.perms || null, depts: r.depts || null }); showToast(r.name + ' 已登入'); }
     else { authMsg = (r && r.error) || '登入失敗'; renderView(); }
   }).catch(() => { authMsg = '連不上伺服器，請檢查網路後再試一次'; renderView(); }).then(() => { pwBusy = false; const b = document.getElementById('pwBtn'); if (b) { b.disabled = false; b.textContent = '登入'; } });
 }
@@ -1502,7 +1541,7 @@ function openStaffSetup() {
       '<select class="form-input ss-type" onchange="ssTypeChanged(this)"><option value="正職"' + (s.type !== '承攬' ? ' selected' : '') + '>正職</option><option value="承攬"' + (s.type === '承攬' ? ' selected' : '') + '>承攬制</option></select>' +
       '<input class="form-input ss-user" placeholder="帳號（選填）" value="' + esc(s.user || '') + '" autocomplete="off">' +
       '<input class="form-input ss-pw" type="password" placeholder="' + (s.hasPw ? '已設密碼（不改留空）' : '密碼') + '" autocomplete="new-password">' +
-      '<div class="ss-depts">' + DEPTS.slice(1).map(d => '<label><input type="checkbox" value="' + esc(d) + '"' + (deptsOf(n).indexOf(d) >= 0 ? ' checked' : '') + '>' + esc(d) + '</label>').join('') + '</div></div>';
+      '<div class="ss-depts">' + DEPTS.slice(1).map(d => '<label><input type="checkbox" value="' + esc(d) + '"' + (deptsOf(n).indexOf(d) >= 0 ? ' checked' : '') + '>' + esc(d) + '</label>').join('') + '</div>' + ssPermHTML(s) + '</div>';
   }).join('');
   document.getElementById('ssError').style.display = 'none';
   document.getElementById('staffSetupModal').classList.add('active');
@@ -1525,6 +1564,15 @@ function ssTypeChanged(sel) {
   if (ct) input.value = '';
   input.placeholder = ct ? '承攬制用帳號密碼登入' : 'Gmail（例：abc@gmail.com）';
 }
+// 啟用登入＋管理權限（可看部門、可以做哪些事）
+const MGR_PERM_LABELS = [['editDirect', '改班（直接生效）'], ['editPending', '改班（送 admin 審核）'], ['approve', '核准請假、待審核'], ['people', '人員異動（不再排班、改名、修正備註）'], ['log', '看修改記錄']];
+function ssPermHTML(s) {
+  const m = s.mgr && s.mgr.on ? s.mgr : null, pm = (m && m.perms) || {};
+  return '<div class="ss-perm"><label><input type="checkbox" class="ss-on"' + (s.enabled === false ? '' : ' checked') + '> 啟用登入</label>' +
+    '<label><input type="checkbox" class="ss-mgr"' + (m ? ' checked' : '') + ' onchange="this.closest(\'.ss-row\').querySelector(\'.ss-mgrbox\').style.display=this.checked?\'\':\'none\'"> 管理權限</label>' +
+    '<div class="ss-mgrbox"' + (m ? '' : ' style="display:none"') + '><div><b>可看部門</b>' + DEPTS.slice(1).map(d => '<label><input type="checkbox" class="ss-mdept" value="' + esc(d) + '"' + (m && (m.depts || []).indexOf(d) >= 0 ? ' checked' : '') + '>' + esc(d) + '</label>').join('') + '</div>' +
+    '<div><b>可以做</b>' + MGR_PERM_LABELS.map(([k, t]) => '<label><input type="checkbox" class="ss-perm-k" value="' + k + '"' + (pm[k] ? ' checked' : '') + '>' + t + '</label>').join('') + '</div></div></div>';
+}
 function closeStaffSetup() { document.getElementById('staffSetupModal').classList.remove('active'); }
 function saveStaffSetup() {
   const staff = {}, errEl = document.getElementById('ssError');
@@ -1535,7 +1583,11 @@ function saveStaffSetup() {
     const user = r.querySelector('.ss-user').value.trim(), pw = r.querySelector('.ss-pw').value, had = (settings.staff || {})[r.dataset.name] || {};
     if (user && !pw && !(had.hasPw && had.user)) bad = r.dataset.name + ' 設了帳號，請也設定密碼';
     if (pw && pw.length < 4) bad = r.dataset.name + ' 的密碼至少要 4 個字';
-    staff[r.dataset.name] = { email: email, type: r.querySelector('.ss-type').value, depts: [...r.querySelectorAll('.ss-depts input:checked')].map(c => c.value), user: user, password: pw };
+    const mgrOn = r.querySelector('.ss-mgr').checked, perms = {};
+    r.querySelectorAll('.ss-perm-k').forEach(c => { perms[c.value] = c.checked; });
+    const mdepts = [...r.querySelectorAll('.ss-mdept:checked')].map(c => c.value);
+    if (mgrOn && !mdepts.length) bad = r.dataset.name + ' 開了管理權限，請至少勾一個可看的部門';
+    staff[r.dataset.name] = { enabled: r.querySelector('.ss-on').checked, mgr: mgrOn ? { on: true, depts: mdepts, perms: perms } : null, email: email, type: r.querySelector('.ss-type').value, depts: [...r.querySelectorAll('.ss-depts input:checked')].map(c => c.value), user: user, password: pw };
   });
   if (bad) { errEl.textContent = bad; errEl.style.display = 'block'; return; }
   requireAdmin().then(name => {
@@ -1931,14 +1983,14 @@ function leaveCardHTML(q, idx) {
     (q.time ? '<span class="log-time">' + esc(q.time) + '</span>' : '') + '</div>' +
     '<div class="leave-range">📅 ' + esc(leaveReqText(q)) + '</div>' + (q.reason ? '<div class="leave-reason">💬 ' + esc(q.reason) + '</div>' : '') +
     '<div class="leave-hint">核准後會自動把 ' + esc(q.name) + ' 從這段時間的班表拿掉</div>' +
-    '<div class="review-actions"><button class="btn-approve" onclick="leaveAction(\'' + q.id + '\',' + idx + ',\'approve\')">✓ 核准</button>' +
+    '<div class="review-actions need-approve"><button class="btn-approve" onclick="leaveAction(\'' + q.id + '\',' + idx + ',\'approve\')">✓ 核准</button>' +
     '<button class="btn-reject" onclick="leaveAction(\'' + q.id + '\',' + idx + ',\'reject\')">✕ 拒絕</button></div>' +
     '<div class="review-pw-error" id="leaveErr_' + idx + '"></div></div>';
 }
 function leaveAction(id, idx, action) {
   const errEl = document.getElementById('leaveErr_' + idx);
   const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
-  requireAdmin().then(approver => {
+  requirePerm('approve').then(approver => {
     if (!approver) return;
     showToast(action === 'approve' ? '核准中...' : '拒絕中...');
     apiPost({ action: action === 'approve' ? 'approveLeave' : 'rejectLeave', id: id }).then(okOrThrow).then(resp => {
@@ -2038,8 +2090,18 @@ function chooseSaveScope(scope) {
   // 完整班表只有 admin 看得到，「員工選名字送審核」用不到了
   document.getElementById('scopeStaffArea').style.display = 'none';
   document.getElementById('scopeNeedLogin').style.display = 'none';
+  // 主管只有「送審核」權限時：用自己的名字送給 admin 審核（固定班批次只能直接儲存）
+  document.getElementById('scopeMgrPending').style.display = isManager() && can('editPending') && !window._fixedSaving ? '' : 'none';
   document.getElementById('staffNameBtns').innerHTML = knownNames(window._batchSaving ? [batchDraft] : []).map(n =>
     '<button class="scope-name-btn" data-name="' + esc(n) + '" onclick="confirmAsStaffName(this.dataset.name)">' + esc(n) + '</button>').join('');
+}
+
+function confirmMgrPending() {
+  requirePerm('editPending').then(name => {
+    if (!name) return;
+    closeScope();
+    confirmSaveScope(window._pendingScope, name, false);
+  });
 }
 
 function backToStep1() {
@@ -2051,7 +2113,7 @@ function closeScope() { document.getElementById('saveScopeModal').classList.remo
 function scopeError(msg) { const e = document.getElementById('scopePwError'); e.textContent = msg; e.style.display = 'block'; }
 
 function confirmWithPassword() {
-  requireAdmin().then(name => {
+  requirePerm('editDirect').then(name => {
     if (!name) return;
     closeScope();
     confirmSaveScope(window._pendingScope, name, true);
@@ -2157,7 +2219,7 @@ function pendingCardHTML(p, idx, prefix, currentData) {
     (p.timestamp ? '<span class="log-time">' + esc(p.timestamp) + '</span>' : '') + '</div>';
   h += '<div class="log-compare"><div class="log-box"><div class="log-box-title">目前</div>' + peopleInline(currentData !== undefined ? currentData : p.oldData) + '</div>' +
     '<div class="log-arrow">→</div><div class="log-box new"><div class="log-box-title">修改為</div>' + peopleInline(p.data) + '</div></div>';
-  h += '<div class="review-actions admin-only"><button class="btn-approve" onclick="pendingAction(\'' + p.id + '\',\'' + prefix + '\',' + idx + ',\'approve\')">✓ 批准</button>' +
+  h += '<div class="review-actions need-approve"><button class="btn-approve" onclick="pendingAction(\'' + p.id + '\',\'' + prefix + '\',' + idx + ',\'approve\')">✓ 批准</button>' +
     '<button class="btn-reject" onclick="pendingAction(\'' + p.id + '\',\'' + prefix + '\',' + idx + ',\'reject\')">✕ 拒絕</button></div>';
   h += '<div class="review-pw-error" id="' + prefix + 'Err_' + idx + '"></div></div>';
   return h;
@@ -2181,7 +2243,7 @@ function approvePendingWithFreeze(pendingId, approver) {
 }
 
 function pendingAction(pendingId, prefix, idx, action) {
-  requireAdmin().then(approver => {
+  requirePerm('approve').then(approver => {
     if (!approver) return;
     showToast(action === 'approve' ? '批准中...' : '拒絕中...');
     const req = action === 'approve' ? approvePendingWithFreeze(pendingId, approver) : apiPost({ action: 'rejectPending', id: pendingId, approver: approver });
@@ -2198,7 +2260,7 @@ function pendingAction(pendingId, prefix, idx, action) {
 
 /* ─── 管理面板 ─── */
 function openHistoryAuth() {
-  requireAdmin().then(name => {
+  requirePerm('review').then(name => {
     if (!name) return;
     document.getElementById('historyModal').classList.add('active');
     updatePendingCount();
@@ -2329,7 +2391,7 @@ function confirmRename() {
   if (oldName === newName) { fail('新名字跟原本一樣'); return; }
   const clash = renameableNames().find(n => n !== oldName && n.toLowerCase() === newName.toLowerCase());
   if (clash) { fail('「' + clash + '」已經有人用了，請換一個名字'); return; }
-  requireAdmin().then(matched => {
+  requirePerm('people').then(matched => {
     if (!matched) return;
     showToast('改名中...');
     apiPost({ action: 'renamePerson', oldName: oldName, newName: newName })
@@ -2352,7 +2414,7 @@ function confirmStaffLeave() {
   const fail = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
   if (!name) { fail('請輸入姓名'); return; }
   if (!eDate) { fail('請選擇生效日'); return; }
-  requireAdmin().then(matched => {
+  requirePerm('people').then(matched => {
     if (!matched) return;
     closeStaffLeave();
     showToast('處理中...');
@@ -2375,7 +2437,7 @@ function confirmReplaceNote() {
   if (!name) { fail('請輸入姓名'); return; }
   if (!oldNote) { fail('這個人沒有可修改的備註'); return; }
   if (oldNote === newNote) { fail('新備註跟原本一樣'); return; }
-  requireAdmin().then(matched => {
+  requirePerm('people').then(matched => {
     if (!matched) return;
     closeStaffLeave();
     showToast('修正中...');
@@ -2619,9 +2681,9 @@ function batchApplyFixed(remove) {
   window._batchSaving = false;
   chooseSaveScope('all');
   document.getElementById('scopeTitle').textContent = remove ? '從固定班表移除' : '加入固定班表';
-  document.getElementById('scopeStepDesc').textContent = summary + '（需要 admin）';
+  document.getElementById('scopeStepDesc').textContent = summary + '（要有「直接儲存」的權限）';
   document.getElementById('scopeStaffArea').style.display = 'none';
-  document.getElementById('scopeNeedLogin').style.display = isAdmin() ? 'none' : '';
+  document.getElementById('scopeNeedLogin').style.display = can('editDirect') ? 'none' : '';
   document.getElementById('scopeBackBtn').style.display = 'none';
   document.getElementById('saveScopeModal').classList.add('active');
 }
@@ -2645,7 +2707,7 @@ function saveBatch() {
   window._batchSaving = true;
   chooseSaveScope('this');
   document.getElementById('scopeTitle').textContent = '儲存批量班表（' + n + ' 格）';
-  document.getElementById('scopeStepDesc').textContent = isAdmin() ? '確認身分：admin 直接生效，選員工則送審核' : '選你的名字，送給主管審核';
+  document.getElementById('scopeStepDesc').textContent = '確認後儲存';
   document.getElementById('scopeBackBtn').style.display = 'none';
   document.getElementById('saveScopeModal').classList.add('active');
 }
