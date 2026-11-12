@@ -168,6 +168,7 @@
   .card-hd .badge { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--warn); color: #fff; }
   .card-edit { margin-left: auto; font-family: inherit; font-size: 11px; padding: 3px 9px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
   .card-edit:hover { background: var(--surface-3); }
+  body:not(.p-edit) .at-c, body:not(.p-edit) .card-row, body:not(.p-edit) .card-none { cursor: default; }
   .card-edit .lbl { display: none; }
   .card-lanes { position: relative; padding: 2px 0 14px; margin-bottom: 4px; border-bottom: 1px dashed var(--surface-3); }
   .card-lanes i { display: block; height: 4px; border-radius: 2px; margin: 2px 0; }
@@ -540,7 +541,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#4f46e5">
-<meta name="apple-mobile-web-app-title" content="模型班表">
+<meta name="apple-mobile-web-app-title" content="排班表">
 </head>
 <body>
 <header class="app-header">
@@ -1611,7 +1612,7 @@ function renderCards(dates) {
     const pend = TIME_SLOTS.filter(s => hourMark(date, s) === 'pend').length;
     h += '<div class="card' + (isToday(date) ? ' today' : '') + '"><div class="card-hd"><b>週' + DAYS[di] + '</b><small>' + (date.getMonth() + 1) + '/' + date.getDate() + '</small>' +
       (isToday(date) ? '<em>今天</em>' : '') + (pend ? '<span class="badge">待審核 ' + pend + '</span>' : '') +
-      '<button class="card-edit" title="編輯這天" onclick="openHourPicker(' + di + ')">✎<span class="lbl"> 編輯</span></button></div>';
+      '<button class="card-edit need-edit" title="編輯這天" onclick="openHourPicker(' + di + ')">✎<span class="lbl"> 編輯</span></button></div>';
     if (!segs.length) { h += '<div class="card-none" onclick="openHourPicker(' + di + ')">本日無排班</div></div>'; return; }
     // 一人一細條上下疊，重疊時段一眼看出有幾個人
     h += '<div class="card-lanes">' + segs.map(s => '<i class="' + dimCls(s.name).trim() + '" title="' + esc(s.name + ' ' + segTime(s)) + '" style="margin-left:' + ((s.start - FIRST_HOUR) / span * 100) + '%;width:' + ((s.end - s.start) / span * 100) + '%;background:' + personColor(s.name).border + '"></i>').join('') +
@@ -1669,6 +1670,7 @@ function renderLeaveView(dates) {
 
 // 卡片的「✎ 編輯」：列出這天每個時段，選一個進去編輯
 function openHourPicker(di) {
+  if (!can('edit')) return;   // 沒有改班權限（只能看）就不開編輯
   const date = getWeekDates(currentWeekOffset)[di];
   document.getElementById('hourPickTitle').textContent = '選擇時段｜' + dayLabel(date);
   document.getElementById('hourPickBody').innerHTML = TIME_SLOTS.map(slot => {
@@ -2042,11 +2044,13 @@ function openEdit(slotId, di) {
   const date = getWeekDates(currentWeekOffset)[di];
   const cell = getCell(slotId, date);
   const cellPending = pendingData.filter(p => pendingMatches(p, cell.templateKey, cell.dateKey));
-  if (cellPending.length) { openReview(slotId, di, cellPending, cell.data); return; }
+  // 點格子：有待審核且能核准→審核畫面；能改班→編輯；只能看就什麼都不開
+  if (cellPending.length && (can('approve') || can('edit'))) { openReview(slotId, di, cellPending, cell.data); return; }
   openEditDirect(slotId, di);
 }
 
 function openEditDirect(slotId, di) {
+  if (!can('edit')) return;
   const date = getWeekDates(currentWeekOffset)[di];
   const cell = getCell(slotId, date);
   editingCell = cell.templateKey; editingDateKey = cell.dateKey;

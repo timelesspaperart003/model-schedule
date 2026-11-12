@@ -1,6 +1,6 @@
 {
-  "name": "模型班表",
-  "short_name": "模型班表",
+  "name": "全公司排班表",
+  "short_name": "排班表",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
